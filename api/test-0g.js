@@ -21,7 +21,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const apiKey = key.replace(/^Bearer\s+/i, '')
+    const apiKey = key.replace(/^Bearer\s+/i, '').replace(/[\r\n\s]/g, '')
     const base = url.replace(/\/+$/, '')
     const endpoint = (base.endsWith('/v1') ? base : base + '/v1') + '/chat/completions'
 
