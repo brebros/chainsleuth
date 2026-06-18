@@ -1,7 +1,8 @@
 node_modules/
 dist/
 .env
+.env.local
 *.log
-.chainsleuth-wallet.json
-.chainsleuth-history.json
+.DS_Store
+.vercel
 .0g-api-key.json

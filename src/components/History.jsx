@@ -8,13 +8,12 @@ export default function History() {
     fetchHistory()
   }, [])
 
-  const fetchHistory = async () => {
+  const fetchHistory = () => {
     try {
-      const res = await fetch('/api/history')
-      const data = await res.json()
-      setHistory(data.slice(0, 20)) // Show last 20
+      const data = JSON.parse(localStorage.getItem('chainsleuth_history') || '[]')
+      setHistory(data.slice(0, 20))
     } catch (error) {
-      console.error('Failed to fetch history')
+      console.error('Failed to load history')
     } finally {
       setLoading(false)
     }

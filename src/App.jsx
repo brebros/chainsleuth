@@ -7,9 +7,8 @@ import Footer from './components/Footer'
 import History from './components/History'
 import LoadingAnimation from './components/LoadingAnimation'
 
-const API_BASE = window.location.port === '3000'
-  ? 'http://localhost:3001'
-  : window.location.origin
+// Vercel: API routes on same domain
+const API_BASE = window.location.origin
 
 function App() {
   const [analysis, setAnalysis] = useState(null)
@@ -35,6 +34,19 @@ function App() {
 
       const data = await response.json()
       setAnalysis(data)
+
+      // Save to localStorage for history
+      try {
+        const history = JSON.parse(localStorage.getItem('chainsleuth_history') || '[]')
+        history.unshift({
+          address: data.address,
+          riskScore: data.riskScore,
+          contractInfo: data.contractInfo,
+          timestamp: new Date().toISOString()
+        })
+        localStorage.setItem('chainsleuth_history', JSON.stringify(history.slice(0, 50)))
+      } catch (e) { /* ignore storage errors */ }
+
     } catch (err) {
       setError(err.message || 'Failed to analyze contract. Please try again.')
     } finally {
@@ -104,17 +116,6 @@ function App() {
                 }`}>
                   {analysis.aiSource === '0g-compute' ? '⚡' : '🔍'}
                   {analysis.aiSource === '0g-compute' ? '0G Compute' : 'Rule-based Analysis'}
-                </span>
-              )}
-
-              {analysis.storageResult && (
-                <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium ${
-                  analysis.storageResult.storage === '0g-network'
-                    ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
-                    : 'bg-gray-800 text-gray-400 border border-gray-700'
-                }`}>
-                  {analysis.storageResult.storage === '0g-network' ? '⛓️' : '💾'}
-                  {analysis.storageResult.storage === '0g-network' ? 'Stored on 0G' : 'Saved Locally'}
                 </span>
               )}
             </div>
