@@ -1,55 +1,50 @@
-// GET /api/test-0g — debug endpoint
+// GET /api/test-0g — debug + test with native https
+import https from 'https'
+
 export default async function handler(req, res) {
-  const url = process.env.ZG_COMPUTE_URL
-  const key = process.env.ZG_COMPUTE_KEY
-  const model = process.env.ZG_COMPUTE_MODEL
-
+  const rawKey = process.env.ZG_COMPUTE_KEY || ''
+  const model = process.env.ZG_COMPUTE_MODEL || 'qwen/qwen2.5-omni-7b'
+  
+  // Clean key: strip Bearer + newlines
+  const apiKey = rawKey.replace(/^Bearer\s+/i, '').replace(/[\r\n]+/g, '')
+  
   const result = {
-    hasURL: !!url,
-    hasKey: !!key,
-    hasModel: !!model,
-    urlValue: url ? url.substring(0, 30) + '...' : null,
-    modelValue: model,
-    keyPrefix: key ? key.substring(0, 20) + '...' : null,
-    error: null,
-    aiResponse: null
+    rawLen: rawKey.length,
+    cleanLen: apiKey.length,
+    keyOK: apiKey.startsWith('app-sk-'),
   }
 
-  if (!url || !key) {
-    result.error = 'Missing env vars'
-    return res.json(result)
-  }
-
+  // Try with native https (bypass any fetch encoding issues)
   try {
-    const apiKey = key.replace(/^Bearer\s+/i, '').replace(/[\r\n]+/g, '')
-    const base = url.replace(/\/+$/, '')
-    const endpoint = (base.endsWith('/v1') ? base : base + '/v1') + '/chat/completions'
-
-    result.endpoint = endpoint
-
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: model || 'qwen/qwen2.5-omni-7b',
-        messages: [{ role: 'user', content: 'Say hi in 3 words' }],
-        max_tokens: 20
-      })
+    const body = JSON.stringify({
+      model,
+      messages: [{ role: 'user', content: 'Say hi in 3 words' }],
+      max_tokens: 20
     })
 
-    result.httpStatus = response.status
-    const body = await response.text()
-    result.responsePreview = body.substring(0, 300)
-
-    if (response.ok) {
-      const data = JSON.parse(body)
-      result.aiResponse = data.choices?.[0]?.message?.content
-    }
-  } catch (e) {
-    result.error = e.message
+    const aiResult = await new Promise((resolve, reject) => {
+      const req2 = https.request({
+        hostname: 'compute-network-6.integratenetwork.work',
+        path: '/v1/proxy/v1/chat/completions',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Length': Buffer.byteLength(body)
+        }
+      }, (res2) => {
+        let data = ''
+        res2.on('data', chunk => data += chunk)
+        res2.on('end', () => resolve({ status: res2.statusCode, body: data.substring(0, 300) }))
+      })
+      req2.on('error', reject)
+      req2.write(body)
+      req2.end()
+    })
+    
+    result.nativeResult = aiResult
+  } catch(e) {
+    result.nativeError = e.message
   }
 
   res.json(result)
