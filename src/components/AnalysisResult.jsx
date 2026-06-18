@@ -41,19 +41,21 @@ export default function AnalysisResult({ analysis }) {
         {/* Stats grid */}
         <div className="grid grid-cols-3 gap-4 p-4 bg-cyber-darker/50 rounded-xl">
           <div className="text-center">
-            <div className="text-2xl font-bold text-white font-mono">
-              {analysis.holderData?.totalHolders?.toLocaleString() || '—'}
+            <div className="text-2xl font-bold text-white font-mono truncate">
+              {analysis.holderData?.totalSupply && analysis.holderData.totalSupply !== 'N/A' 
+                ? Number(analysis.holderData.totalSupply).toLocaleString() 
+                : '—'}
             </div>
-            <div className="text-xs text-gray-400 mt-1">Total Holders</div>
+            <div className="text-xs text-gray-400 mt-1">Total Supply</div>
           </div>
           <div className="text-center border-x border-gray-800">
             <div className="text-2xl font-bold text-white font-mono">
-              {analysis.holderData?.top10Concentration || '—'}%
+              {analysis.contractInfo?.compiler?.match(/v[\d.]+/)?.[0] || '—'}
             </div>
-            <div className="text-xs text-gray-400 mt-1">Top 10 Holdings</div>
+            <div className="text-xs text-gray-400 mt-1">Compiler</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-white font-mono">
+            <div className="text-2xl font-bold text-white font-mono truncate">
               {analysis.contractInfo?.name || '—'}
             </div>
             <div className="text-xs text-gray-400 mt-1">Token Name</div>
@@ -61,10 +63,12 @@ export default function AnalysisResult({ analysis }) {
         </div>
       </div>
 
-      {/* Holder Distribution Chart */}
-      <HolderChart 
+      {/* Contract Overview / Holder Chart */}
+      <HolderChart
         concentration={analysis.holderData?.top10Concentration}
         totalHolders={analysis.holderData?.totalHolders}
+        contractInfo={analysis.contractInfo}
+        holderData={analysis.holderData}
       />
 
       {/* Security Checklist */}
