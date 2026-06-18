@@ -16,9 +16,7 @@ const PORT = process.env.PORT || 3001
 const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY || 'YourApiKeyToken'
 const ETHERSCAN_BASE = 'https://api.etherscan.io/api'
 
-// 0G Compute config (optional)
-const ZG_SERVICE_URL = process.env.ZG_SERVICE_URL || ''
-const ZG_API_SECRET = process.env.ZG_API_SECRET || ''
+// 0G Compute — initialized async
 
 app.use(cors())
 app.use(express.json())
@@ -32,13 +30,9 @@ async function initServices() {
   const storageReady = await zgStorage.initialize()
   console.log(`0G Storage: ${storageReady ? '✅ Ready' : '⚠️ Fallback mode (local storage)'}`)
   
-  // Initialize 0G Compute (if configured)
-  if (ZG_SERVICE_URL && ZG_API_SECRET) {
-    const computeReady = zgCompute.initialize(ZG_SERVICE_URL, ZG_API_SECRET)
-    console.log(`0G Compute: ${computeReady ? '✅ Ready' : '⚠️ Fallback mode (rule-based)'}`)
-  } else {
-    console.log('0G Compute: ⚠️ Not configured — using rule-based analysis')
-  }
+  // Initialize 0G Compute
+  const computeReady = await zgCompute.initialize()
+  console.log(`0G Compute: ${computeReady ? '✅ Ready (0G Network)' : '⚠️ Fallback mode (rule-based)'}`)
 }
 
 // Helper: Etherscan API call
@@ -112,7 +106,7 @@ app.get('/api/health', (req, res) => {
     status: 'ok', 
     version: '1.0.0',
     storage: '0g-network',
-    compute: ZG_SERVICE_URL ? '0g-compute' : 'rule-based'
+    compute: zgCompute.initialized ? '0g-compute' : 'rule-based'
   })
 })
 

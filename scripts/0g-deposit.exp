@@ -1,0 +1,22 @@
+#!/usr/bin/expect -f
+set timeout 60
+
+# Deposit 0.3 0G to compute ledger
+spawn 0g-compute-cli deposit --amount 0.3
+
+expect {
+  "successfully" {
+    puts "\n✅ Deposit successful!"
+  }
+  "error" {
+    puts "\n❌ Deposit failed"
+  }
+  "Insufficient" {
+    puts "\n❌ Insufficient balance"
+  }
+  timeout {
+    puts "\n⏰ Timeout"
+  }
+}
+
+expect eof

@@ -1,27 +1,33 @@
-// 0G Compute Integration — AI analysis for contract risk assessment
-// Uses 0G Compute Network (OpenAI-compatible API)
-
+// 0G Compute Integration — Real AI analysis via 0G Network
 import OpenAI from 'openai'
+import fs from 'fs'
+import path from 'path'
 
 class ZGCompute {
   constructor() {
     this.client = null
     this.initialized = false
+    this.model = 'qwen/qwen2.5-omni-7b'
   }
 
-  initialize(serviceUrl, apiSecret) {
-    if (!serviceUrl || !apiSecret) {
-      console.log('0G Compute not configured — using fallback analysis')
-      return false
-    }
-
+  async initialize() {
     try {
+      // Load API key from file
+      const keyPath = path.join(process.cwd(), '.0g-api-key.json')
+      if (!fs.existsSync(keyPath)) {
+        console.log('0G API key not found — using fallback')
+        return false
+      }
+
+      const keyData = JSON.parse(fs.readFileSync(keyPath, 'utf8'))
+      
       this.client = new OpenAI({
-        baseURL: `${serviceUrl}/v1/proxy`,
-        apiKey: apiSecret,
+        baseURL: keyData.serviceUrl + '/v1',
+        apiKey: keyData.headers.Authorization.replace('Bearer ', '')
       })
+      
       this.initialized = true
-      console.log('0G Compute initialized')
+      console.log('✅ 0G Compute initialized — model:', this.model)
       return true
     } catch (error) {
       console.error('0G Compute init failed:', error.message)
@@ -31,7 +37,6 @@ class ZGCompute {
 
   async analyzeContract(contractData) {
     if (!this.initialized || !this.client) {
-      // Fallback to enhanced rule-based analysis
       return this.fallbackAnalysis(contractData)
     }
 
@@ -39,11 +44,11 @@ class ZGCompute {
       const prompt = this.buildAnalysisPrompt(contractData)
       
       const completion = await this.client.chat.completions.create({
-        model: 'qwen/qwen-2.5-7b-instruct',
+        model: this.model,
         messages: [
           {
             role: 'system',
-            content: `You are a blockchain security expert. Analyze smart contracts for rug pull indicators. Be concise and factual. Always include risk level (LOW/MEDIUM/HIGH) and specific reasons.`
+            content: `You are a blockchain security expert analyzing smart contracts for rug pull indicators. Be concise, factual, and direct. Always start with a risk level (LOW/MEDIUM/HIGH) and follow with specific reasons. Maximum 3 sentences.`
           },
           {
             role: 'user',
@@ -51,7 +56,7 @@ class ZGCompute {
           }
         ],
         temperature: 0.3,
-        max_tokens: 500
+        max_tokens: 200
       })
 
       const aiSummary = completion.choices[0]?.message?.content
@@ -67,21 +72,28 @@ class ZGCompute {
   }
 
   buildAnalysisPrompt(data) {
+    const verified = data.contractInfo?.isVerified ? 'Yes' : 'No'
+    const name = data.contractInfo?.name || 'Unknown'
+    const score = data.riskScore
+    const flags = data.flags?.map(f => `- ${f.name}: ${f.status.toUpperCase()} — ${f.details}`).join('\n') || 'None'
+    const holders = data.holderData?.totalHolders || 'Unknown'
+    const concentration = data.holderData?.top10Concentration || 'Unknown'
+
     return `Analyze this smart contract for rug pull risk:
 
 Contract: ${data.address}
-Name: ${data.contractInfo?.name || 'Unknown'}
-Verified: ${data.contractInfo?.isVerified ? 'Yes' : 'No'}
-Risk Score: ${data.riskScore}/100
+Name: ${name}
+Verified on Etherscan: ${verified}
+Current Risk Score: ${score}/100
 
 Security Flags:
-${data.flags?.map(f => `- ${f.name}: ${f.status.toUpperCase()} — ${f.details}`).join('\n') || 'No flags available'}
+${flags}
 
 Holder Data:
-- Total holders: ${data.holderData?.totalHolders || 'Unknown'}
-- Top 10 concentration: ${data.holderData?.top10Concentration || 'Unknown'}%
+- Total holders: ${holders}
+- Top 10 concentration: ${concentration}%
 
-Provide a brief, professional risk assessment in 2-3 sentences.`
+Provide a brief, professional risk assessment.`
   }
 
   fallbackAnalysis(contractData) {
@@ -90,26 +102,22 @@ Provide a brief, professional risk assessment in 2-3 sentences.`
     const warnings = flags?.filter(f => f.status === 'warning').length || 0
 
     let summary = ''
-    let riskLevel = ''
 
     if (riskScore <= 30) {
-      riskLevel = 'LOW'
-      summary = `This contract shows low risk indicators. Contract is ${contractData.contractInfo?.isVerified ? 'verified' : 'unverified'}. No major red flags detected in the automated analysis. Always verify independently before investing.`
+      summary = `LOW RISK: This contract shows strong security indicators. Contract is ${contractData.contractInfo?.isVerified ? 'verified' : 'unverified'} with no critical red flags. Standard caution applies — always verify independently.`
     } else if (riskScore <= 60) {
-      riskLevel = 'MEDIUM'
-      summary = `This contract shows moderate risk. ${warnings > 0 ? `${warnings} warning(s) detected.` : ''} ${dangers > 0 ? `${dangers} critical issue(s) found.` : 'No critical issues.'} Review each flag carefully and verify the project's legitimacy through official channels.`
+      summary = `MEDIUM RISK: This contract shows moderate risk indicators. ${warnings > 0 ? `${warnings} warning(s) detected.` : ''} ${dangers > 0 ? `${dangers} critical issue(s) found.` : ''} Review each flag carefully before investing.`
     } else {
-      riskLevel = 'HIGH'
-      summary = `⚠️ HIGH RISK: This contract shows significant red flags. ${dangers} critical issue(s) and ${warnings} warning(s) detected. Exercise extreme caution — this contract may be malicious. Do not invest without thorough independent verification.`
+      summary = `HIGH RISK: This contract shows significant red flags. ${dangers} critical issue(s) and ${warnings} warning(s) detected. Exercise extreme caution — do not invest without thorough independent verification.`
     }
 
     return {
       success: true,
       summary,
-      riskLevel,
       source: 'rule-based'
     }
   }
 }
 
-export default new ZGCompute()
+const zgCompute = new ZGCompute()
+export default zgCompute

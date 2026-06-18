@@ -1,62 +1,92 @@
 import React from 'react'
+import HolderChart from './HolderChart'
 
 export default function AnalysisResult({ analysis }) {
   const getFlagIcon = (status) => {
     switch (status) {
       case 'safe': return '🟢'
-      case 'warning': return '⚠️'
-      case 'danger': return '🚩'
-      default: return '❓'
+      case 'warning': return '🟡'
+      case 'danger': return '🔴'
+      default: return '⚪'
     }
   }
 
   const getFlagColor = (status) => {
     switch (status) {
-      case 'safe': return 'text-cyber-green'
-      case 'warning': return 'text-cyber-yellow'
-      case 'danger': return 'text-cyber-red'
-      default: return 'text-gray-400'
+      case 'safe': return 'text-green-400 bg-green-500/10 border-green-500/20'
+      case 'warning': return 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20'
+      case 'danger': return 'text-red-400 bg-red-500/10 border-red-500/20'
+      default: return 'text-gray-400 bg-gray-500/10 border-gray-500/20'
     }
   }
 
   return (
     <div className="w-full max-w-2xl mx-auto space-y-6">
-      {/* Contract Info */}
-      <div className="bg-cyber-dark/80 border border-cyber-purple/20 rounded-xl p-6">
-        <div className="text-gray-400 text-sm mb-2">CONTRACT ADDRESS</div>
-        <div className="font-mono text-cyber-purple break-all">
-          {analysis.address}
+      {/* Contract Info Card */}
+      <div className="bg-cyber-dark/80 border border-cyber-purple/20 rounded-2xl p-6 backdrop-blur-sm">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <div className="text-gray-400 text-xs uppercase tracking-wider mb-1">Contract Address</div>
+            <div className="font-mono text-cyber-purple text-sm break-all">
+              {analysis.address}
+            </div>
+          </div>
+          {analysis.contractInfo?.isVerified && (
+            <span className="px-3 py-1 bg-green-500/20 text-green-400 text-xs rounded-full border border-green-500/30">
+              ✓ Verified
+            </span>
+          )}
         </div>
-        
-        <div className="grid grid-cols-3 gap-4 mt-6">
+
+        {/* Stats grid */}
+        <div className="grid grid-cols-3 gap-4 p-4 bg-cyber-darker/50 rounded-xl">
           <div className="text-center">
-            <div className="text-2xl font-bold text-white">{analysis.holderData.totalHolders.toLocaleString()}</div>
-            <div className="text-xs text-gray-400">Total Holders</div>
+            <div className="text-2xl font-bold text-white font-mono">
+              {analysis.holderData?.totalHolders?.toLocaleString() || '—'}
+            </div>
+            <div className="text-xs text-gray-400 mt-1">Total Holders</div>
+          </div>
+          <div className="text-center border-x border-gray-800">
+            <div className="text-2xl font-bold text-white font-mono">
+              {analysis.holderData?.top10Concentration || '—'}%
+            </div>
+            <div className="text-xs text-gray-400 mt-1">Top 10 Holdings</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-white">{analysis.holderData.top10Concentration}%</div>
-            <div className="text-xs text-gray-400">Top 10 Holdings</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-white">{analysis.holderData.contractAge} days</div>
-            <div className="text-xs text-gray-400">Contract Age</div>
+            <div className="text-2xl font-bold text-white font-mono">
+              {analysis.contractInfo?.name || '—'}
+            </div>
+            <div className="text-xs text-gray-400 mt-1">Token Name</div>
           </div>
         </div>
       </div>
 
+      {/* Holder Distribution Chart */}
+      <HolderChart 
+        concentration={analysis.holderData?.top10Concentration}
+        totalHolders={analysis.holderData?.totalHolders}
+      />
+
       {/* Security Checklist */}
-      <div className="bg-cyber-dark/80 border border-cyber-purple/20 rounded-xl p-6">
-        <div className="text-gray-400 text-sm mb-4">SECURITY CHECKLIST</div>
+      <div className="bg-cyber-dark/80 border border-cyber-purple/20 rounded-2xl p-6 backdrop-blur-sm">
+        <div className="flex items-center gap-2 mb-5">
+          <span className="text-lg">🛡️</span>
+          <span className="text-gray-400 text-sm uppercase tracking-wider">Security Checklist</span>
+        </div>
+        
         <div className="space-y-3">
-          {analysis.flags.map((flag, index) => (
-            <div key={index} className="flex items-center gap-3 p-3 bg-cyber-darker/50 rounded-lg">
-              <span className="text-xl">{getFlagIcon(flag.status)}</span>
-              <div className="flex-1">
-                <div className="font-medium">{flag.name}</div>
-                <div className="text-sm text-gray-400">{flag.details}</div>
+          {analysis.flags?.map((flag, index) => (
+            <div 
+              key={index} 
+              className={`flex items-center gap-4 p-4 rounded-xl border transition-all hover:scale-[1.01] ${getFlagColor(flag.status)}`}
+            >
+              <span className="text-xl flex-shrink-0">{getFlagIcon(flag.status)}</span>
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold text-white">{flag.name}</div>
+                <div className="text-sm opacity-75 mt-0.5">{flag.details}</div>
               </div>
-              <span className={`text-sm font-medium ${getFlagColor(flag.status)}`}>
-                {flag.status.toUpperCase()}
+              <span className="text-xs font-bold uppercase tracking-wider flex-shrink-0 opacity-75">
+                {flag.status}
               </span>
             </div>
           ))}
@@ -64,19 +94,19 @@ export default function AnalysisResult({ analysis }) {
       </div>
 
       {/* AI Summary */}
-      <div className="bg-cyber-dark/80 border border-cyber-purple/20 rounded-xl p-6">
+      <div className="bg-gradient-to-br from-purple-900/20 to-blue-900/20 border border-cyber-purple/30 rounded-2xl p-6 backdrop-blur-sm">
         <div className="flex items-center gap-2 mb-4">
-          <span className="text-xl">🤖</span>
-          <span className="text-gray-400 text-sm">AI ANALYSIS SUMMARY</span>
+          <span className="text-2xl">🤖</span>
+          <span className="text-gray-300 text-sm uppercase tracking-wider font-semibold">AI Analysis Summary</span>
         </div>
-        <p className="text-gray-300 leading-relaxed">
+        <p className="text-gray-200 leading-relaxed text-lg">
           {analysis.summary}
         </p>
       </div>
 
       {/* Disclaimer */}
-      <div className="text-center text-xs text-gray-500 mt-6">
-        ⚠️ This is NOT financial advice. Always do your own research (DYOR).
+      <div className="text-center text-xs text-gray-500 py-4 border-t border-gray-800">
+        ⚠️ This is NOT financial advice. Always do your own research (DYOR) before investing.
       </div>
     </div>
   )

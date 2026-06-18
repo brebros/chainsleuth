@@ -12,6 +12,7 @@
     "start": "npm run build && node server.js"
   },
   "dependencies": {
+    "@0gfoundation/0g-compute-ts-sdk": "^0.8.4",
     "@0gfoundation/0g-storage-ts-sdk": "^1.2.10",
     "axios": "^1.6.0",
     "cors": "^2.8.5",

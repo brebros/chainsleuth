@@ -1,0 +1,29 @@
+#!/usr/bin/expect -f
+set timeout 60
+
+set provider "0xa48f01287233509FD694a22Bf840225062E67836"
+
+spawn 0g-compute-cli transfer-fund --provider $provider --amount 0.5
+
+# Wait for service type selection
+expect "Select service type"
+sleep 1
+send "\r"  # Select Inference (first option)
+
+# Wait for completion
+expect {
+  "successfully" {
+    puts "\n✅ Transfer successful!"
+  }
+  "error" {
+    puts "\n❌ Transfer failed"
+  }
+  "transferred" {
+    puts "\n✅ Transfer successful!"
+  }
+  timeout {
+    puts "\n⏰ Timeout"
+  }
+}
+
+expect eof

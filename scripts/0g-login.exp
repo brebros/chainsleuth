@@ -1,0 +1,31 @@
+#!/usr/bin/expect -f
+set timeout 60
+
+# Set the private key
+set private_key "0x42f577e613d59ac898e2b4c4e8018151c0ceb29e55c18c65213fb715f673157c"
+
+# Run login command
+spawn 0g-compute-cli login
+
+# Wait for private key prompt
+expect "Enter your wallet private key"
+send "$private_key\r"
+
+# Wait for confirmation
+expect "Login with this wallet address?"
+send "Y\r"
+
+# Wait for completion
+expect {
+  "Login successful" {
+    puts "\n✅ Login successful!"
+  }
+  "error" {
+    puts "\n❌ Login failed"
+  }
+  timeout {
+    puts "\n⏰ Timeout"
+  }
+}
+
+expect eof

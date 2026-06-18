@@ -4,3 +4,4 @@ dist/
 *.log
 .chainsleuth-wallet.json
 .chainsleuth-history.json
+.0g-api-key.json

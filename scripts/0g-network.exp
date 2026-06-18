@@ -1,0 +1,26 @@
+#!/usr/bin/expect -f
+set timeout 30
+
+# Setup network first
+spawn 0g-compute-cli setup-network
+
+# Wait for network selection
+expect "Please select a network"
+sleep 1
+send "\033\[B"  # Arrow down to select Testnet
+sleep 1
+send "\r"
+
+expect {
+  "configured" {
+    puts "\n✅ Network configured!"
+  }
+  "error" {
+    puts "\n❌ Network config failed"
+  }
+  timeout {
+    puts "\n⏰ Timeout"
+  }
+}
+
+expect eof
