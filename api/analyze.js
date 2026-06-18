@@ -19,12 +19,15 @@ export default async function handler(req, res) {
     const apiKey = process.env.ETHERSCAN_API_KEY || ''
     console.log('Analyzing:', address, 'key:', apiKey.substring(0, 5))
 
-    const [contractSource, tokenInfo, holders, txCount] = await Promise.all([
-      etherscanQuery({ module: 'contract', action: 'getsourcecode', address }, apiKey).catch(e => { console.log('source err:', e.message); return null }),
-      etherscanQuery({ module: 'token', action: 'tokeninfo', contractaddress: address }, apiKey).catch(e => null),
-      etherscanQuery({ module: 'token', action: 'tokenholderlist', contractaddress: address, page: 1, offset: 20 }, apiKey).catch(e => null),
-      etherscanQuery({ module: 'stats', action: 'tokensupply', contractaddress: address }, apiKey).catch(e => null),
-    ])
+    // Serialize requests to avoid Etherscan V2 rate limits (max 5 req/sec free tier)
+    const delay = (ms) => new Promise(r => setTimeout(r, ms))
+    const contractSource = await etherscanQuery({ module: 'contract', action: 'getsourcecode', address }, apiKey).catch(e => { console.log('source err:', e.message); return null })
+    await delay(300)
+    const tokenInfo = await etherscanQuery({ module: 'token', action: 'tokeninfo', contractaddress: address }, apiKey).catch(e => null)
+    await delay(300)
+    const holders = await etherscanQuery({ module: 'token', action: 'tokenholderlist', contractaddress: address, page: 1, offset: 20 }, apiKey).catch(e => null)
+    await delay(300)
+    const txCount = await etherscanQuery({ module: 'stats', action: 'tokensupply', contractaddress: address }, apiKey).catch(e => null)
 
     console.log('Etherscan results:', { source: !!contractSource, holders: !!holders })
 
