@@ -4,6 +4,11 @@ import RiskScore from './components/RiskScore'
 import AnalysisResult from './components/AnalysisResult'
 import Header from './components/Header'
 import Footer from './components/Footer'
+import History from './components/History'
+
+const API_BASE = window.location.port === '3000'
+  ? 'http://localhost:3001'
+  : window.location.origin
 
 function App() {
   const [analysis, setAnalysis] = useState(null)
@@ -16,32 +21,21 @@ function App() {
     setAnalysis(null)
 
     try {
-      // Simulate API call - will be replaced with real 0G Compute integration
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      
-      // Mock analysis result
-      const mockAnalysis = {
-        address: contractAddress,
-        riskScore: Math.floor(Math.random() * 100),
-        flags: [
-          { name: 'LP Locked', status: Math.random() > 0.3 ? 'safe' : 'warning', details: 'Liquidity locked for 6 months' },
-          { name: 'Owner Renounced', status: Math.random() > 0.5 ? 'safe' : 'danger', details: 'Contract ownership not renounced' },
-          { name: 'Holder Distribution', status: Math.random() > 0.4 ? 'safe' : 'warning', details: 'Top 10 holders own 35% of supply' },
-          { name: 'Contract Verified', status: Math.random() > 0.2 ? 'safe' : 'danger', details: 'Source code not verified on Etherscan' },
-          { name: 'Honeypot Check', status: Math.random() > 0.1 ? 'safe' : 'danger', details: 'No honeypot patterns detected' },
-          { name: 'Mint Authority', status: Math.random() > 0.6 ? 'safe' : 'warning', details: 'Mint function still available' },
-        ],
-        summary: 'This token shows moderate risk indicators. While liquidity is locked and the contract is verified, the owner retains significant control. Exercise caution and do your own research before investing.',
-        holderData: {
-          totalHolders: Math.floor(Math.random() * 10000) + 1000,
-          top10Concentration: Math.floor(Math.random() * 40) + 20,
-          contractAge: Math.floor(Math.random() * 30) + 1,
-        }
+      const response = await fetch(`${API_BASE}/api/analyze`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address: contractAddress })
+      })
+
+      if (!response.ok) {
+        const err = await response.json()
+        throw new Error(err.error || 'Analysis failed')
       }
 
-      setAnalysis(mockAnalysis)
+      const data = await response.json()
+      setAnalysis(data)
     } catch (err) {
-      setError('Failed to analyze contract. Please try again.')
+      setError(err.message || 'Failed to analyze contract. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -80,6 +74,34 @@ function App() {
           <div className="mt-8 space-y-6">
             <RiskScore score={analysis.riskScore} />
             <AnalysisResult analysis={analysis} />
+            
+            {/* AI Source Badge */}
+            {analysis.aiSource && (
+              <div className="text-center">
+                <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs ${
+                  analysis.aiSource === '0g-compute' 
+                    ? 'bg-cyber-purple/20 text-cyber-purple border border-cyber-purple/30'
+                    : 'bg-gray-800 text-gray-400 border border-gray-700'
+                }`}>
+                  {analysis.aiSource === '0g-compute' ? '⚡ Powered by 0G Compute' : '🔍 Rule-based analysis'}
+                </span>
+              </div>
+            )}
+
+            {/* Storage Badge */}
+            {analysis.storageResult && (
+              <div className="text-center">
+                <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs ${
+                  analysis.storageResult.storage === '0g-network'
+                    ? 'bg-cyber-blue/20 text-cyber-blue border border-cyber-blue/30'
+                    : 'bg-gray-800 text-gray-400 border border-gray-700'
+                }`}>
+                  {analysis.storageResult.storage === '0g-network' 
+                    ? `⛓️ Stored on 0G — ${analysis.storageResult.gateway}`
+                    : '💾 Saved locally'}
+                </span>
+              </div>
+            )}
           </div>
         )}
 
@@ -103,6 +125,9 @@ function App() {
             </div>
           </div>
         )}
+
+        {/* History Section */}
+        <History />
       </main>
 
       <Footer />
