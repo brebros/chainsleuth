@@ -2,7 +2,7 @@
   "name": "chainsleuth",
   "version": "1.0.0",
   "type": "module",
-  "description": "AI-powered rug pull detector — paste a contract, get the truth",
+  "description": "AI-powered rug pull detector \u2014 paste a contract, get the truth",
   "private": true,
   "scripts": {
     "dev": "vite",
@@ -11,10 +11,12 @@
     "start": "vite preview"
   },
   "dependencies": {
+    "@0gfoundation/0g-compute-ts-sdk": "^0.8.4",
     "axios": "^1.6.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "recharts": "^2.10.0"
+    "recharts": "^2.10.0",
+    "ethers": "^6.9.0"
   },
   "devDependencies": {
     "@types/react": "^18.2.0",
