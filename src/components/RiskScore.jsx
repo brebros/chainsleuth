@@ -78,7 +78,7 @@ export default function RiskScore({ score }) {
         </div>
 
         {/* Score number */}
-        <div className="flex items-center justify-center gap-3 mb-2">
+        <div className="flex items-center justify-center gap-3 mb-3">
           <span className="text-4xl">{getEmoji(score)}</span>
           <span 
             className="text-7xl font-black font-mono tabular-nums"
@@ -89,12 +89,21 @@ export default function RiskScore({ score }) {
           <span className="text-2xl text-gray-400 font-light">/100</span>
         </div>
 
-        {/* Label */}
+        {/* Label — big & clear */}
         <div 
-          className="text-xl font-bold tracking-wider mb-4"
-          style={{ color: colors.text }}
+          className="text-2xl font-extrabold tracking-widest mb-2 uppercase"
+          style={{ color: colors.text, textShadow: `0 0 20px ${colors.text}44` }}
         >
           {getLabel(score)}
+        </div>
+
+        {/* Direction hint */}
+        <div className="text-sm text-gray-400 mb-4">
+          {score <= 30 
+            ? '↑ Lower score = safer contract' 
+            : score <= 70 
+              ? '↑ Higher score = more risk factors detected'
+              : '↑ Higher score = more dangerous'}
         </div>
 
         {/* Progress bar */}
