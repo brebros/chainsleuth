@@ -6,6 +6,7 @@ import Header from './components/Header'
 import Footer from './components/Footer'
 import History from './components/History'
 import LoadingAnimation from './components/LoadingAnimation'
+import CompareMode from './components/CompareMode'
 
 const API_BASE = window.location.origin
 
@@ -219,6 +220,9 @@ function App() {
 
         {/* History Section */}
         <History />
+
+        {/* Compare Mode */}
+        {!loading && <CompareMode />}
       </main>
 
       <Footer />
