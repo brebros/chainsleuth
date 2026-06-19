@@ -61,10 +61,11 @@ export default async function handler(req, res) {
         analysis.aiRecommendations = aiResult.recommendations || null
         analysis.aiConfidence = aiResult.confidence || null
         if (aiResult.riskScore !== null && aiResult.riskScore !== undefined) {
-          // Cap AI override: verified contracts with no honeypot can't exceed 30
+          // Cap AI override: verified contracts with no honeypot/ponzi can't exceed 30
           const isVerified = analysis.contractInfo?.isVerified
           const hasHoneypot = analysis.flags?.some(f => f.name === 'GoPlus: Honeypot' && f.status === 'danger')
-          if (isVerified && !hasHoneypot) {
+          const hasPonzi = analysis.flags?.some(f => f.name === 'Ponzi/Scam Pattern' && f.status === 'danger')
+          if (isVerified && !hasHoneypot && !hasPonzi) {
             analysis.riskScore = Math.min(30, aiResult.riskScore)
           } else {
             analysis.riskScore = aiResult.riskScore
