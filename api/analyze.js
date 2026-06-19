@@ -1,5 +1,4 @@
 // POST /api/analyze — Vercel serverless function
-// Etherscan data fetched here, AI analysis proxied to VPS (0G Compute needs same-IP auth)
 import { etherscanQuery, analyzeContract } from '../lib/etherscan.js'
 
 const VPS_URL = process.env.VPS_0G_URL || 'http://77.90.51.232:3001'
@@ -8,7 +7,6 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
-
   if (req.method === 'OPTIONS') return res.status(200).end()
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
@@ -19,18 +17,25 @@ export default async function handler(req, res) {
     }
 
     const apiKey = process.env.ETHERSCAN_API_KEY || ''
-    console.log('Analyzing:', address)
-
     const delay = ms => new Promise(r => setTimeout(r, ms))
+
     const contractSource = await etherscanQuery({ module: 'contract', action: 'getsourcecode', address }, apiKey).catch(() => null)
     await delay(300)
     const holders = await etherscanQuery({ module: 'token', action: 'tokenholderlist', contractaddress: address, page: 1, offset: 20 }, apiKey).catch(() => null)
     await delay(300)
     const txCount = await etherscanQuery({ module: 'stats', action: 'tokensupply', contractaddress: address }, apiKey).catch(() => null)
+    await delay(300)
+    const tokenTx = await etherscanQuery({ module: 'account', action: 'tokentx', address, page: 1, offset: 10, sort: 'desc' }, apiKey).catch(() => null)
 
     const analysis = analyzeContract(contractSource, null, holders, txCount, address)
 
-    // Call VPS for 0G Compute AI analysis
+    // Add extra data
+    if (tokenTx?.result?.length > 0) {
+      analysis.recentActivity = tokenTx.result.length
+      analysis.lastActivity = tokenTx.result[0].timeStamp ? new Date(parseInt(tokenTx.result[0].timeStamp) * 1000).toISOString() : null
+    }
+
+    // AI analysis via VPS
     try {
       const aiResp = await fetch(VPS_URL + '/api/ai-analyze', {
         method: 'POST',
@@ -50,16 +55,7 @@ export default async function handler(req, res) {
         }
       }
     } catch (aiErr) {
-      console.log('VPS AI proxy failed:', aiErr.message)
-      const dangers = analysis.flags.filter(f => f.status === 'danger').length
-      const warnings = analysis.flags.filter(f => f.status === 'warning').length
-      if (analysis.riskScore <= 30) {
-        analysis.summary = 'LOW RISK: Contract is ' + (analysis.contractInfo.isVerified ? 'verified' : 'unverified') + ' with no critical red flags.'
-      } else if (analysis.riskScore <= 60) {
-        analysis.summary = 'MEDIUM RISK: ' + warnings + ' warning(s), ' + dangers + ' critical issue(s). Review carefully.'
-      } else {
-        analysis.summary = 'HIGH RISK: ' + dangers + ' critical issue(s) and ' + warnings + ' warning(s). Extreme caution.'
-      }
+      console.log('AI proxy failed:', aiErr.message)
       analysis.aiSource = 'rule-based'
     }
 
