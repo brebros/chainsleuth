@@ -1,6 +1,7 @@
 import React from 'react'
 import GoPlusPanel from './GoPlusPanel'
 import ShareButton from './ShareButton'
+import RiskExplanation from './RiskExplanation'
 
 export default function AnalysisResult({ analysis }) {
   const getFlagIcon = (status) => {
@@ -147,7 +148,10 @@ export default function AnalysisResult({ analysis }) {
               <span className="text-xl flex-shrink-0">{getFlagIcon(flag.status)}</span>
               <div className="flex-1 min-w-0">
                 <div className="font-semibold text-white">{flag.name}</div>
-                <div className="text-sm opacity-75 mt-0.5">{flag.details}</div>
+                <div className="text-sm opacity-75 mt-0.5 flex items-center flex-wrap">
+                  {flag.details}
+                  <RiskExplanation explanation={flag.explanation} />
+                </div>
               </div>
               <span className="text-xs font-bold uppercase tracking-wider flex-shrink-0 opacity-75">{flag.status}</span>
             </div>
