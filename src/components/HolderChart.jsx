@@ -12,13 +12,14 @@ export default function HolderChart({ concentration, totalHolders, contractInfo,
       </div>
 
       {hasHolderData ? (
-        /* Real holder data — show donut chart */
         <div className="flex items-center gap-8">
           <div className="relative w-32 h-32">
             <svg viewBox="0 0 36 36" className="w-full h-full transform -rotate-90">
               <circle cx="18" cy="18" r="14" fill="none" stroke="#1f2937" strokeWidth="4" />
               <circle
-                cx="18" cy="18" r="14" fill="none" stroke="#8b5cf6" strokeWidth="4"
+                cx="18" cy="18" r="14" fill="none"
+                stroke={top10 > 50 ? '#ef4444' : top10 > 30 ? '#eab308' : '#8b5cf6'}
+                strokeWidth="4"
                 strokeDasharray={`${top10} ${100 - top10}`}
                 strokeLinecap="round"
                 className="transition-all duration-1000"
@@ -32,7 +33,7 @@ export default function HolderChart({ concentration, totalHolders, contractInfo,
           <div className="flex-1 space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#8b5cf6' }} />
+                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: top10 > 50 ? '#ef4444' : top10 > 30 ? '#eab308' : '#8b5cf6' }} />
                 <span className="text-sm text-gray-300">Top 10 Holders</span>
               </div>
               <span className="text-sm font-mono font-medium text-white">{top10}%</span>
@@ -55,7 +56,6 @@ export default function HolderChart({ concentration, totalHolders, contractInfo,
           </div>
         </div>
       ) : (
-        /* No holder data — show useful contract info instead */
         <div className="grid grid-cols-2 gap-4">
           <div className="p-3 bg-cyber-darker/50 rounded-lg">
             <div className="text-xs text-gray-400 mb-1">Token Name</div>
@@ -88,7 +88,7 @@ export default function HolderChart({ concentration, totalHolders, contractInfo,
         </div>
       )}
 
-      {/* Warning if high concentration */}
+      {/* Warnings */}
       {hasHolderData && top10 > 50 && (
         <div className="mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
           ⚠️ High whale concentration — potential rug pull risk
