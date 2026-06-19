@@ -70,7 +70,7 @@ export default async function handler(req, res) {
           const hasHoneypot = analysis.flags?.some(f => f.name === 'GoPlus: Honeypot' && f.status === 'danger')
           const hasPonzi = analysis.flags?.some(f => f.name === 'Ponzi/Scam Pattern' && f.status === 'danger')
           if (isVerified && !hasHoneypot && !hasPonzi) {
-            analysis.riskScore = Math.min(30, analysis.riskScore)
+            analysis.riskScore = Math.min(15, analysis.riskScore)
           }
         }
       }
