@@ -19,6 +19,7 @@ export default function DataSourcesBar({ dataSources }) {
       <div className="flex items-center justify-center gap-3 flex-wrap">
         {sources.map(([key, src]) => {
           const meta = SOURCES[key]
+          if (!meta) return null
           return (
             <span key={key} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-500/10 border border-green-500/20 rounded-full text-xs text-green-400">
               <span>{meta.icon}</span>
@@ -37,6 +38,7 @@ export default function DataSourcesBar({ dataSources }) {
       <div className="flex items-center justify-center gap-3 flex-wrap">
         {sources.map(([key, src]) => {
           const meta = SOURCES[key]
+          if (!meta) return null
           if (src.ok || src.note) {
             return (
               <span key={key} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-500/10 border border-green-500/20 rounded-full text-xs text-green-400">

@@ -1,27 +1,30 @@
-import React, { useState } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 
 export default function ShareButton({ address, chain }) {
   const [copied, setCopied] = useState(false)
   const [showTooltip, setShowTooltip] = useState(false)
+  const timerRef = useRef(null)
+
+  useEffect(() => {
+    return () => { if (timerRef.current) clearTimeout(timerRef.current) }
+  }, [])
 
   const shareUrl = `${window.location.origin}/scan/${address}${chain && chain !== 'eth' ? `?chain=${chain}` : ''}`
 
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(shareUrl)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
     } catch {
-      // Fallback
       const el = document.createElement('textarea')
       el.value = shareUrl
       document.body.appendChild(el)
       el.select()
       document.execCommand('copy')
       document.body.removeChild(el)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
     }
+    setCopied(true)
+    if (timerRef.current) clearTimeout(timerRef.current)
+    timerRef.current = setTimeout(() => setCopied(false), 2000)
   }
 
   const handleShare = async () => {
@@ -63,7 +66,6 @@ export default function ShareButton({ address, chain }) {
         )}
       </button>
 
-      {/* Tooltip */}
       {showTooltip && !copied && (
         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-lg text-xs text-gray-300 whitespace-nowrap z-50">
           Copy share link

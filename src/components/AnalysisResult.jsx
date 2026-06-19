@@ -241,7 +241,7 @@ export default function AnalysisResult({ analysis }) {
               <div className="text-xs text-gray-400">GitHub</div>
             </div>
           </div>
-          {analysis.social.redFlags.length > 0 && (
+          {analysis.social.redFlags?.length > 0 && (
             <div className="space-y-1">
               {analysis.social.redFlags.map((flag, i) => (
                 <div key={i} className="text-sm text-yellow-400 flex items-center gap-2">

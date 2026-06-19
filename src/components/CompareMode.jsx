@@ -8,6 +8,7 @@ export default function CompareMode() {
   const [result1, setResult1] = useState(null)
   const [result2, setResult2] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
 
   const isValidAddress = (addr) => /^0x[a-fA-F0-9]{40}$/.test(addr)
 
@@ -16,6 +17,7 @@ export default function CompareMode() {
     setLoading(true)
     setResult1(null)
     setResult2(null)
+    setError(null)
 
     try {
       const [res1, res2] = await Promise.all([
@@ -23,17 +25,17 @@ export default function CompareMode() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ address: address1 })
-        }).then(r => r.json()),
+        }).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() }),
         fetch(`${API_BASE}/api/analyze`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ address: address2 })
-        }).then(r => r.json())
+        }).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() })
       ])
       setResult1(res1)
       setResult2(res2)
     } catch (err) {
-      console.error('Compare failed:', err)
+      setError(err.message || 'Compare failed')
     } finally {
       setLoading(false)
     }
@@ -90,6 +92,13 @@ export default function CompareMode() {
         >
           {loading ? 'Comparing...' : '⚖️ Compare Now'}
         </button>
+
+        {/* Error */}
+        {error && (
+          <div className="mt-4 p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-sm text-center">
+            ⚠️ {error}
+          </div>
+        )}
 
         {/* Results */}
         {result1 && result2 && (

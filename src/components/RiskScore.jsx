@@ -22,9 +22,9 @@ export default function RiskScore({ score }) {
 
     // Animate gauge rotation
     const targetRotation = (score / 100) * 180 - 90
-    setTimeout(() => setRotation(targetRotation), 100)
+    const rotationTimer = setTimeout(() => setRotation(targetRotation), 100)
 
-    return () => clearInterval(timer)
+    return () => { clearInterval(timer); clearTimeout(rotationTimer) }
   }, [score])
 
   const getColor = (s) => {

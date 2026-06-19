@@ -34,20 +34,22 @@ export default function Watchlist() {
     setScanning(true)
     const newResults = {}
 
-    for (const addr of watchlist) {
+    const promises = watchlist.map(async (addr) => {
       try {
         const res = await fetch(`${API_BASE}/api/analyze`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ address: addr })
         })
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
         const data = await res.json()
-        newResults[addr] = data
+        newResults[addr] = { ...data, scannedAt: Date.now() }
       } catch (err) {
-        newResults[addr] = { error: err.message }
+        newResults[addr] = { error: err.message, scannedAt: Date.now() }
       }
-    }
+    })
 
+    await Promise.allSettled(promises)
     setResults(newResults)
     setScanning(false)
   }
@@ -105,22 +107,26 @@ export default function Watchlist() {
                   <div className="font-mono text-sm text-gray-300 truncate">{addr}</div>
                   {results[addr] && !results[addr].error && (
                     <div className="text-xs text-gray-500 mt-1">
-                      {results[addr].contractInfo?.name || 'Unknown'} • Last scan: {new Date().toLocaleTimeString()}
+                      {results[addr].contractInfo?.name || 'Unknown'} • Last scan: {new Date(results[addr].scannedAt).toLocaleTimeString()}
                     </div>
                   )}
+                  {results[addr]?.error && (
+                    <div className="text-xs text-red-400 mt-1">⚠️ {results[addr].error}</div>
+                  )}
                 </div>
-                {results[addr] && !results[addr].error ? (
-                  <div className={`text-lg font-bold font-mono ${getScoreColor(results[addr].riskScore)}`}>
-                    {results[addr].riskScore}
-                  </div>
-                ) : (
+                <div className="flex items-center gap-2">
+                  {results[addr] && !results[addr].error && (
+                    <div className={`text-lg font-bold font-mono ${getScoreColor(results[addr].riskScore)}`}>
+                      {results[addr].riskScore}
+                    </div>
+                  )}
                   <button
                     onClick={() => removeFromWatchlist(addr)}
                     className="text-gray-500 hover:text-red-400 text-sm"
                   >
                     ✕
                   </button>
-                )}
+                </div>
               </div>
             ))}
           </div>
