@@ -1,5 +1,6 @@
 import React from 'react'
 import GoPlusPanel from './GoPlusPanel'
+import ShareButton from './ShareButton'
 
 export default function AnalysisResult({ analysis }) {
   const getFlagIcon = (status) => {
@@ -75,11 +76,14 @@ export default function AnalysisResult({ analysis }) {
               </span>
             )}
           </div>
-          {analysis.contractInfo?.isVerified && (
-            <span className="px-3 py-1 bg-green-500/20 text-green-400 text-xs rounded-full border border-green-500/30">
-              ✓ Verified
-            </span>
-          )}
+          <div className="flex items-center gap-3">
+            {analysis.contractInfo?.isVerified && (
+              <span className="px-3 py-1 bg-green-500/20 text-green-400 text-xs rounded-full border border-green-500/30">
+                ✓ Verified
+              </span>
+            )}
+            <ShareButton address={analysis.address} chain={analysis.chain} />
+          </div>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-4 bg-cyber-darker/50 rounded-xl">
           <div className="text-center">

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import ContractInput from './components/ContractInput'
 import RiskScore from './components/RiskScore'
 import AnalysisResult from './components/AnalysisResult'
@@ -20,10 +20,39 @@ function App() {
     try { return parseInt(localStorage.getItem('chainsleuth_scan_count') || '0') } catch { return 0 }
   })
 
+  // Hash routing: parse /#/scan/0x... or /scan/0x... on mount
+  useEffect(() => {
+    const parseUrl = () => {
+      // Try hash first: #/scan/0x...
+      const hash = window.location.hash
+      let match = hash.match(/^#\/scan\/(0x[a-fA-F0-9]{40})(?:\?chain=(\w+))?$/)
+      
+      // Try clean URL: /scan/0x...
+      if (!match) {
+        const path = window.location.pathname
+        match = path.match(/^\/scan\/(0x[a-fA-F0-9]{40})(?:\?chain=(\w+))?$/)
+      }
+
+      if (match) {
+        const addr = match[1]
+        const chain = match[2] || 'eth'
+        if (!loading && !analysis) {
+          handleAnalyze(addr, chain)
+        }
+      }
+    }
+    parseUrl()
+    window.addEventListener('hashchange', parseUrl)
+    return () => window.removeEventListener('hashchange', parseUrl)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleAnalyze = async (contractAddress, chain = 'eth') => {
     setLoading(true)
     setError(null)
     setAnalysis(null)
+
+    // Update URL for sharing (clean URL via Vercel rewrite)
+    window.history.replaceState(null, '', `/scan/${contractAddress}${chain !== 'eth' ? `?chain=${chain}` : ''}`)
 
     try {
       const response = await fetch(`${API_BASE}/api/analyze`, {

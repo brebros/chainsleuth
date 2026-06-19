@@ -3,7 +3,9 @@
   "outputDirectory": "dist",
   "framework": "vite",
   "installCommand": "npm install",
-  "rewrites": [],
+  "rewrites": [
+    { "source": "/scan/:path*", "destination": "/index.html" }
+  ],
   "headers": [
     {
       "source": "/api/(.*)",
