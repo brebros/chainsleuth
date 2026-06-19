@@ -20,6 +20,8 @@ export default function AnalysisResult({ analysis }) {
     }
   }
 
+  const chainNames = { eth: 'Ethereum', bsc: 'BNB Chain', base: 'Base', polygon: 'Polygon', arbitrum: 'Arbitrum' }
+
   return (
     <div className="w-full max-w-2xl mx-auto space-y-6">
       {/* Contract Info Card */}
@@ -28,6 +30,11 @@ export default function AnalysisResult({ analysis }) {
           <div>
             <div className="text-gray-400 text-xs uppercase tracking-wider mb-1">Contract Address</div>
             <div className="font-mono text-cyber-purple text-sm break-all">{analysis.address}</div>
+            {analysis.chain && (
+              <span className="inline-block mt-1 px-2 py-0.5 bg-cyber-purple/20 text-cyber-purple text-xs rounded-full">
+                {chainNames[analysis.chain] || analysis.chain}
+              </span>
+            )}
           </div>
           {analysis.contractInfo?.isVerified && (
             <span className="px-3 py-1 bg-green-500/20 text-green-400 text-xs rounded-full border border-green-500/30">

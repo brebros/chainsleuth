@@ -1,5 +1,5 @@
 // POST /api/analyze — Vercel serverless function
-import { etherscanQuery, analyzeContract, getContractInfo, checkLiquidity } from '../lib/etherscan.js'
+import { etherscanQuery, analyzeContract, getContractInfo, checkLiquidity, getChainId } from '../lib/etherscan.js'
 import { checkSocialSignals } from '../lib/social.js'
 import { getGoPlusSecurity, goPlusToFlags } from '../lib/goplus.js'
 
@@ -13,23 +13,28 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
   try {
-    const { address } = req.body
+    const { address, chain } = req.body
+    const chainName = chain || 'eth'
+    const chainId = getChainId(chainName)
+
     if (!address || !/^0x[a-fA-F0-9]{40}$/.test(address)) {
       return res.status(400).json({ error: 'Invalid contract address' })
     }
 
     const apiKey = process.env.ETHERSCAN_API_KEY || ''
+    const q = (params) => etherscanQuery(params, apiKey, chainId)
 
     const [contractSource, holders, txCount, contractInfo, liquidity, goPlus] = await Promise.all([
-      etherscanQuery({ module: 'contract', action: 'getsourcecode', address }, apiKey).catch(() => null),
-      etherscanQuery({ module: 'token', action: 'tokenholderlist', contractaddress: address, page: 1, offset: 20 }, apiKey).catch(() => null),
-      etherscanQuery({ module: 'stats', action: 'tokensupply', contractaddress: address }, apiKey).catch(() => null),
-      getContractInfo(address, apiKey).catch(() => null),
-      checkLiquidity(address, apiKey).catch(() => null),
-      getGoPlusSecurity(address).catch(() => null)
+      q({ module: 'contract', action: 'getsourcecode', address }).catch(() => null),
+      q({ module: 'token', action: 'tokenholderlist', contractaddress: address, page: 1, offset: 20 }).catch(() => null),
+      q({ module: 'stats', action: 'tokensupply', contractaddress: address }).catch(() => null),
+      getContractInfo(address, apiKey, chainId).catch(() => null),
+      checkLiquidity(address, apiKey, chainId).catch(() => null),
+      getGoPlusSecurity(address, chainName).catch(() => null)
     ])
 
     const analysis = analyzeContract(contractSource, null, holders, txCount, address)
+    analysis.chain = chainName
     if (contractInfo) analysis.contractInfo = { ...analysis.contractInfo, ...contractInfo }
     if (liquidity) analysis.liquidity = liquidity
 

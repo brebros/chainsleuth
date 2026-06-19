@@ -19,7 +19,7 @@ function App() {
     try { return parseInt(localStorage.getItem('chainsleuth_scan_count') || '0') } catch { return 0 }
   })
 
-  const handleAnalyze = async (contractAddress) => {
+  const handleAnalyze = async (contractAddress, chain = 'eth') => {
     setLoading(true)
     setError(null)
     setAnalysis(null)
@@ -28,7 +28,7 @@ function App() {
       const response = await fetch(`${API_BASE}/api/analyze`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ address: contractAddress })
+        body: JSON.stringify({ address: contractAddress, chain })
       })
 
       if (!response.ok) {
