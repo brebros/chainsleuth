@@ -21,6 +21,7 @@ export default function History() {
   }
 
   const getScoreColor = (score) => {
+    if (score == null || isNaN(score)) return 'text-gray-400'
     if (score <= 30) return 'text-cyber-green'
     if (score <= 70) return 'text-cyber-yellow'
     return 'text-cyber-red'

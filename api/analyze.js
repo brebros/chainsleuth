@@ -29,11 +29,13 @@ export default async function handler(req, res) {
     let chainSuggestion = null
 
     if (!detection.isContract) {
-      chainSuggestion = {
-        type: 'warning',
-        message: 'This address has no contract code on any supported chain. It may be a wallet address (EOA).',
-        detectedChain: null
-      }
+      // Contract not found on any chain — return clear error, not misleading score
+      return res.status(404).json({
+        error: 'Contract not found',
+        message: `No contract code found at ${address} on ${selectedChain.toUpperCase()} or any supported chain. This may be a wallet address (EOA) or the contract doesn't exist.`,
+        address,
+        chain: selectedChain
+      })
     } else if (chainName !== selectedChain) {
       chainSuggestion = {
         type: 'switched',

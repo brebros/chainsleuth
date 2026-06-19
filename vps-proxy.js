@@ -122,7 +122,9 @@ app.post('/api/ai-analyze', async (req, res) => {
 
 function buildPrompt(d) {
   const v = d.contractInfo && d.contractInfo.isVerified ? 'Yes' : 'No'
-  const n = (d.contractInfo && d.contractInfo.name) || 'Unknown'
+  // Sanitize contract name to prevent prompt injection
+  const rawName = (d.contractInfo && d.contractInfo.name) || 'Unknown'
+  const n = rawName.replace(/[^\w\s.-]/g, '').substring(0, 50)
   const s = d.riskScore
   const f = (d.flags || []).map(function(x) { return '- ' + x.name + ': ' + x.status.toUpperCase() + ' - ' + x.details }).join('\n') || 'None'
   const h = (d.holderData && d.holderData.totalHolders) || 'Unknown'

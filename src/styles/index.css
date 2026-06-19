@@ -109,6 +109,13 @@ body {
 .light input::placeholder { color: #9ca3af !important; }
 .light .bg-gradient-to-br { background: linear-gradient(to bottom right, #ffffff, #f9fafb) !important; }
 .light .bg-gradient-to-r { background: linear-gradient(to right, #ffffff, #f9fafb) !important; }
+.light [class*="bg-cyber-dark"] { background: #f3f4f6 !important; }
+.light [class*="bg-cyber-darker"] { background: #e5e7eb !important; }
+.light [class*="bg-gray-900"] { background: rgba(255,255,255,0.9) !important; }
+.light [class*="bg-gray-800"] { background: #f3f4f6 !important; }
+.light [class*="bg-gray-950"] { background: rgba(255,255,255,0.9) !important; }
+.light [class*="border-gray-8"] { border-color: #e5e7eb !important; }
+.light [class*="border-gray-7"] { border-color: #d1d5db !important; }
 
 /* Focus states */
 input:focus {
