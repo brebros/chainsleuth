@@ -1,5 +1,4 @@
 import React from 'react'
-import HolderChart from './HolderChart'
 
 export default function AnalysisResult({ analysis }) {
   const getFlagIcon = (status) => {
@@ -42,8 +41,8 @@ export default function AnalysisResult({ analysis }) {
         <div className="grid grid-cols-3 gap-4 p-4 bg-cyber-darker/50 rounded-xl">
           <div className="text-center">
             <div className="text-2xl font-bold text-white font-mono truncate">
-              {analysis.holderData?.totalSupply && analysis.holderData.totalSupply !== 'N/A' 
-                ? Number(analysis.holderData.totalSupply).toLocaleString() 
+              {analysis.holderData?.totalSupply && analysis.holderData.totalSupply !== 'N/A'
+                ? Number(analysis.holderData.totalSupply).toLocaleString()
                 : '—'}
             </div>
             <div className="text-xs text-gray-400 mt-1">Total Supply</div>
@@ -63,25 +62,17 @@ export default function AnalysisResult({ analysis }) {
         </div>
       </div>
 
-      {/* Contract Overview / Holder Chart */}
-      <HolderChart
-        concentration={analysis.holderData?.top10Concentration}
-        totalHolders={analysis.holderData?.totalHolders}
-        contractInfo={analysis.contractInfo}
-        holderData={analysis.holderData}
-      />
-
-      {/* Security Checklist */}
+      {/* Security Checklist — Rule-based */}
       <div className="bg-cyber-dark/80 border border-cyber-purple/20 rounded-2xl p-6 backdrop-blur-sm">
         <div className="flex items-center gap-2 mb-5">
           <span className="text-lg">🛡️</span>
           <span className="text-gray-400 text-sm uppercase tracking-wider">Security Checklist</span>
         </div>
-        
+
         <div className="space-y-3">
           {analysis.flags?.map((flag, index) => (
-            <div 
-              key={index} 
+            <div
+              key={index}
               className={`flex items-center gap-4 p-4 rounded-xl border transition-all hover:scale-[1.01] ${getFlagColor(flag.status)}`}
             >
               <span className="text-xl flex-shrink-0">{getFlagIcon(flag.status)}</span>
@@ -97,16 +88,72 @@ export default function AnalysisResult({ analysis }) {
         </div>
       </div>
 
+      {/* AI Detailed Analysis */}
+      {analysis.aiDetails && analysis.aiDetails.length > 0 && (
+        <div className="bg-gradient-to-br from-purple-900/20 to-blue-900/20 border border-cyber-purple/30 rounded-2xl p-6 backdrop-blur-sm">
+          <div className="flex items-center gap-2 mb-4">
+            <span className="text-2xl">🤖</span>
+            <span className="text-gray-300 text-sm uppercase tracking-wider font-semibold">AI Deep Analysis</span>
+          </div>
+
+          <div className="space-y-3">
+            {analysis.aiDetails.map((detail, index) => (
+              <div key={index} className={`p-3 rounded-lg border ${getFlagColor(detail.status)}`}>
+                <div className="flex items-center gap-2 mb-1">
+                  <span>{getFlagIcon(detail.status)}</span>
+                  <span className="font-semibold text-white text-sm">{detail.category}</span>
+                </div>
+                <p className="text-sm opacity-80 ml-6">{detail.explanation}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Confidence */}
+          {analysis.aiConfidence && (
+            <div className="mt-4 pt-4 border-t border-gray-700/50">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-400">AI Confidence</span>
+                <span className="text-purple-400 font-mono">{Math.round(analysis.aiConfidence * 100)}%</span>
+              </div>
+              <div className="mt-2 h-2 bg-gray-800 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-purple-500 to-blue-500 rounded-full transition-all duration-500"
+                  style={{ width: `${analysis.aiConfidence * 100}%` }}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* AI Summary */}
       <div className="bg-gradient-to-br from-purple-900/20 to-blue-900/20 border border-cyber-purple/30 rounded-2xl p-6 backdrop-blur-sm">
         <div className="flex items-center gap-2 mb-4">
-          <span className="text-2xl">🤖</span>
-          <span className="text-gray-300 text-sm uppercase tracking-wider font-semibold">AI Analysis Summary</span>
+          <span className="text-2xl">📋</span>
+          <span className="text-gray-300 text-sm uppercase tracking-wider font-semibold">AI Summary</span>
         </div>
         <p className="text-gray-200 leading-relaxed text-lg">
           {analysis.summary}
         </p>
       </div>
+
+      {/* Recommendations */}
+      {analysis.aiRecommendations && analysis.aiRecommendations.length > 0 && (
+        <div className="bg-cyber-dark/80 border border-cyber-purple/20 rounded-2xl p-6 backdrop-blur-sm">
+          <div className="flex items-center gap-2 mb-4">
+            <span className="text-lg">💡</span>
+            <span className="text-gray-400 text-sm uppercase tracking-wider">Recommendations</span>
+          </div>
+          <ul className="space-y-2">
+            {analysis.aiRecommendations.map((rec, index) => (
+              <li key={index} className="flex items-start gap-3 text-sm text-gray-300">
+                <span className="text-purple-400 mt-0.5">•</span>
+                <span>{rec}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* Disclaimer */}
       <div className="text-center text-xs text-gray-500 py-4 border-t border-gray-800">
