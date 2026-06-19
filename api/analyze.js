@@ -21,7 +21,7 @@ export default async function handler(req, res) {
     const apiKey = process.env.ETHERSCAN_API_KEY || ''
     console.log('Analyzing:', address)
 
-    // Serialize to avoid Etherscan V2 rate limits (5 req/sec free tier)
+    // Serialize to avoid Etherscan V2 rate limits
     const delay = ms => new Promise(r => setTimeout(r, ms))
     const contractSource = await etherscanQuery({ module: 'contract', action: 'getsourcecode', address }, apiKey).catch(() => null)
     await delay(300)
@@ -43,10 +43,14 @@ export default async function handler(req, res) {
       if (aiResult.success) {
         analysis.summary = aiResult.summary
         analysis.aiSource = aiResult.source
+        // Use AI risk score if provided (AI can detect patterns rule-based misses)
+        if (aiResult.riskScore !== null && aiResult.riskScore !== undefined) {
+          analysis.riskScore = Math.max(0, Math.min(100, aiResult.riskScore))
+        }
       }
     } catch (aiErr) {
-      console.log('VPS AI proxy failed, using rule-based fallback:', aiErr.message)
-      // Fallback to rule-based
+      console.log('VPS AI proxy failed, using rule-based:', aiErr.message)
+      // Fallback to rule-based summary
       const dangers = analysis.flags.filter(f => f.status === 'danger').length
       const warnings = analysis.flags.filter(f => f.status === 'warning').length
       if (analysis.riskScore <= 30) {

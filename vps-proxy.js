@@ -31,7 +31,7 @@ function initCompute() {
     const raw = (kd.headers && kd.headers.Authorization) || ''
     zgApiKey = raw.replace(/^Bearer\s+/i, '').trim()
     if (!zgApiKey) {
-      console.log('WARNING: empty API key in .0g-api-key.json')
+      console.log('WARNING: empty API key')
       return false
     }
     console.log('0G Compute ready:', zgModel)
@@ -44,7 +44,7 @@ function initCompute() {
 
 app.post('/api/ai-analyze', async (req, res) => {
   if (!zgApiKey) {
-    return res.json({ success: false, summary: '0G Compute not configured', source: 'unavailable' })
+    return res.json({ success: false, summary: '0G Compute not configured', source: 'unavailable', riskScore: null })
   }
   try {
     const cd = req.body
@@ -56,26 +56,40 @@ app.post('/api/ai-analyze', async (req, res) => {
       body: JSON.stringify({
         model: zgModel,
         messages: [
-          { role: 'system', content: 'You are a blockchain security expert analyzing smart contracts for rug pull indicators. Be concise, factual, and direct. Always start with a risk level (LOW/MEDIUM/HIGH) and follow with specific reasons. Maximum 3 sentences.' },
+          { role: 'system', content: 'You are a blockchain security expert analyzing smart contracts for rug pull indicators. You MUST respond in this exact JSON format:\n{"riskScore": <number 0-100>, "riskLevel": "<LOW|MEDIUM|HIGH>", "summary": "<2-3 sentence assessment>"}\nRisk score guide: 0-30=LOW (safe), 31-70=MEDIUM (caution), 71-100=HIGH (danger). Consider: contract verification, owner control, honeypot patterns (blacklist, whitelist, antiBot, maxWallet, tradingEnabled, canSell, maxTxAmount), mint authority, holder concentration, and any suspicious code patterns.' },
           { role: 'user', content: prompt }
         ],
         temperature: 0.3,
-        max_tokens: 200
+        max_tokens: 300
       })
     })
     if (!resp.ok) {
       const err = await resp.text()
       console.error('0G error:', resp.status, err.substring(0, 200))
-      return res.json({ success: false, summary: '0G Compute error: ' + resp.status, source: 'error' })
+      return res.json({ success: false, summary: '0G Compute error: ' + resp.status, source: 'error', riskScore: null })
     }
     const data = await resp.json()
-    const summary = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content
-    if (!summary) return res.json({ success: false, summary: 'Empty AI response', source: 'error' })
-    console.log('AI done for', (cd.address || '').substring(0, 10))
-    res.json({ success: true, summary: summary, source: '0g-compute' })
+    const content = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content
+    if (!content) return res.json({ success: false, summary: 'Empty AI response', source: 'error', riskScore: null })
+
+    // Parse JSON response from AI
+    let parsed = null
+    try {
+      // Try to extract JSON from response (might have markdown wrapper)
+      const jsonMatch = content.match(/\{[\s\S]*\}/)
+      if (jsonMatch) parsed = JSON.parse(jsonMatch[0])
+    } catch (e) {
+      console.log('AI response not JSON, using as summary only')
+    }
+
+    const summary = parsed ? parsed.summary : content
+    const aiRiskScore = parsed ? parsed.riskScore : null
+
+    console.log('AI done for', (cd.address || '').substring(0, 10), 'score:', aiRiskScore)
+    res.json({ success: true, summary: summary, source: '0g-compute', riskScore: aiRiskScore })
   } catch (error) {
     console.error('AI analyze error:', error.message)
-    res.json({ success: false, summary: 'AI analysis failed', source: 'error' })
+    res.json({ success: false, summary: 'AI analysis failed', source: 'error', riskScore: null })
   }
 })
 
@@ -86,7 +100,7 @@ function buildPrompt(d) {
   const f = (d.flags || []).map(function(x) { return '- ' + x.name + ': ' + x.status.toUpperCase() + ' - ' + x.details }).join('\n') || 'None'
   const h = (d.holderData && d.holderData.totalHolders) || 'Unknown'
   const c = (d.holderData && d.holderData.top10Concentration) || 'Unknown'
-  return 'Analyze this smart contract for rug pull risk:\n\nContract: ' + d.address + '\nName: ' + n + '\nVerified: ' + v + '\nRisk Score: ' + s + '/100\n\nFlags:\n' + f + '\n\nHolder Data:\n- Total holders: ' + h + '\n- Top 10 concentration: ' + c + '%\n\nProvide a brief, professional risk assessment.'
+  return 'Analyze this smart contract for rug pull risk:\n\nContract: ' + d.address + '\nName: ' + n + '\nVerified: ' + v + '\nRule-based Risk Score: ' + s + '/100\n\nFlags:\n' + f + '\n\nHolder Data:\n- Total holders: ' + h + '\n- Top 10 concentration: ' + c + '%\n\nProvide your own risk assessment as JSON with riskScore (0-100), riskLevel (LOW/MEDIUM/HIGH), and summary.'
 }
 
 app.get('/api/health', function(req, res) {
