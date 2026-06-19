@@ -4,6 +4,7 @@ import { checkSocialSignals } from '../lib/social.js'
 import { getGoPlusSecurity, goPlusToFlags } from '../lib/goplus.js'
 import { getZeroGContractInfo } from '../lib/zeroG.js'
 import { detectChain } from '../lib/chainDetect.js'
+import { getCachedScore, setCachedScore } from '../lib/scoreCache.js'
 
 const VPS_URL = process.env.VPS_0G_URL || 'http://77.90.51.232:3001'
 
@@ -43,6 +44,14 @@ export default async function handler(req, res) {
 
     const chainId = getChainId(chainName)
     const apiKey = process.env.ETHERSCAN_API_KEY || ''
+
+    // Check score cache first (5 min TTL)
+    const cachedScore = getCachedScore(address, chainName)
+    if (cachedScore !== null) {
+      // Re-run full analysis but use cached score for consistency
+      // (details may vary but score stays stable)
+    }
+
     let analysis
 
     if (chainName === '0g') {
@@ -117,6 +126,14 @@ export default async function handler(req, res) {
     } catch (aiErr) {
       console.log('AI proxy failed:', aiErr.message)
       analysis.aiSource = 'rule-based'
+    }
+
+    // Use cached score for consistency, or cache new score
+    if (cachedScore !== null) {
+      analysis.riskScore = cachedScore
+      analysis.scoreFromCache = true
+    } else {
+      setCachedScore(address, chainName, analysis.riskScore)
     }
 
     res.json(analysis)
