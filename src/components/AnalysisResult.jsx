@@ -21,9 +21,34 @@ export default function AnalysisResult({ analysis }) {
   }
 
   const chainNames = { eth: 'Ethereum', bsc: 'BNB Chain', base: 'Base', polygon: 'Polygon', arbitrum: 'Arbitrum', '0g': '0G Network' }
+  const SOURCE_NAMES = { etherscan: 'Etherscan', goplus: 'GoPlus', social: 'Social', ai: 'AI' }
+
+  // Detect partial data
+  const hasPartialData = analysis.dataSources && (
+    (analysis.dataSources.etherscan && analysis.dataSources.etherscan.error) ||
+    (analysis.dataSources.goplus && analysis.dataSources.goplus.error)
+  )
+  const failedSources = hasPartialData
+    ? Object.entries(analysis.dataSources)
+        .filter(([, s]) => s.error)
+        .map(([k]) => SOURCE_NAMES[k] || k)
+    : []
 
   return (
     <div className="w-full max-w-2xl mx-auto space-y-6">
+      {/* Partial data warning */}
+      {hasPartialData && (
+        <div className="p-4 rounded-xl border bg-yellow-500/10 border-yellow-500/30 text-yellow-400 backdrop-blur-sm">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">⚠️</span>
+            <div>
+              <span className="text-sm font-medium">Partial data — </span>
+              <span className="text-sm">{failedSources.join(', ')} {failedSources.length === 1 ? 'failed' : 'failed'}. Results may be incomplete.</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Chain suggestion banner */}
       {analysis.chainSuggestion && (
         <div className={`p-4 rounded-xl border backdrop-blur-sm ${

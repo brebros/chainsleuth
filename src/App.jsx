@@ -8,6 +8,7 @@ import History from './components/History'
 import LoadingAnimation from './components/LoadingAnimation'
 import CompareMode from './components/CompareMode'
 import Watchlist from './components/Watchlist'
+import DataSourcesBar from './components/DataSourcesBar'
 
 const API_BASE = window.location.origin
 
@@ -32,8 +33,16 @@ function App() {
       })
 
       if (!response.ok) {
-        const err = await response.json()
-        throw new Error(err.error || 'Analysis failed')
+        const err = await response.json().catch(() => ({ error: `HTTP ${response.status}` }))
+        // If 503 with dataSources info, show detailed error
+        if (response.status === 503 && err.dataSources) {
+          const failedSources = Object.entries(err.dataSources)
+            .filter(([, s]) => s.error)
+            .map(([k, s]) => `${k}: ${s.error}`)
+            .join('\n')
+          throw new Error(err.message || `Data sources unavailable\n${failedSources}`)
+        }
+        throw new Error(err.error || err.message || 'Analysis failed')
       }
 
       const data = await response.json()
@@ -57,7 +66,26 @@ function App() {
       } catch (e) {}
 
     } catch (err) {
-      setError(err.message || 'Failed to analyze contract. Please try again.')
+      // Categorize error for better UX
+      let errorType = 'unknown'
+      let errorAction = 'Try again in a few minutes.'
+      const msg = err.message || ''
+
+      if (msg.includes('503') || msg.includes('unavailable') || msg.includes('rate')) {
+        errorType = 'rate_limit'
+        errorAction = 'Etherscan API rate limit reached. Wait 5 minutes, then try again.'
+      } else if (msg.includes('404') || msg.includes('not found')) {
+        errorType = 'not_found'
+        errorAction = 'Contract not found on this chain. Try selecting a different chain.'
+      } else if (msg.includes('network') || msg.includes('fetch') || msg.includes('timeout')) {
+        errorType = 'network'
+        errorAction = 'Network error. Check your connection and try again.'
+      } else if (msg.includes('400') || msg.includes('Invalid')) {
+        errorType = 'invalid'
+        errorAction = 'Invalid address format. Make sure it starts with 0x and has 42 characters.'
+      }
+
+      setError({ message: msg || 'Failed to analyze contract.', type: errorType, action: errorAction })
     } finally {
       setLoading(false)
     }
@@ -109,8 +137,29 @@ function App() {
 
         {/* Error Display */}
         {error && (
-          <div className="mt-8 p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-center backdrop-blur-sm">
-            {error}
+          <div className="mt-8 p-5 bg-red-500/10 border border-red-500/30 rounded-xl backdrop-blur-sm">
+            <div className="flex items-start gap-3">
+              <span className="text-2xl mt-0.5">
+                {error.type === 'rate_limit' ? '⏳' : error.type === 'not_found' ? '🔍' : error.type === 'network' ? '🌐' : error.type === 'invalid' ? '❌' : '⚠️'}
+              </span>
+              <div className="flex-1">
+                <div className="text-red-400 font-semibold mb-1">
+                  {error.type === 'rate_limit' ? 'Rate Limited' :
+                   error.type === 'not_found' ? 'Contract Not Found' :
+                   error.type === 'network' ? 'Network Error' :
+                   error.type === 'invalid' ? 'Invalid Address' :
+                   'Error'}
+                </div>
+                <p className="text-red-300/80 text-sm whitespace-pre-line">{error.message}</p>
+                <p className="text-red-400/60 text-xs mt-2">💡 {error.action}</p>
+              </div>
+              <button
+                onClick={() => setError(null)}
+                className="text-red-400/40 hover:text-red-400 transition-colors text-lg"
+              >
+                ✕
+              </button>
+            </div>
           </div>
         )}
 
@@ -122,6 +171,13 @@ function App() {
           <div className="mt-8 space-y-6 animate-fade-in">
             <RiskScore score={analysis.riskScore} />
             <AnalysisResult analysis={analysis} />
+
+            {/* Data Source Status */}
+            {analysis.dataSources && (
+              <div className="bg-cyber-dark/60 border border-cyber-purple/10 rounded-2xl p-4 backdrop-blur-sm">
+                <DataSourcesBar dataSources={analysis.dataSources} />
+              </div>
+            )}
 
             {/* Badges */}
             <div className="flex flex-wrap items-center justify-center gap-3">

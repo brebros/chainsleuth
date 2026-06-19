@@ -53,48 +53,76 @@ export default async function handler(req, res) {
     }
 
     let analysis
+    const dataSources = { etherscan: { ok: false, error: null }, goplus: { ok: false, error: null }, social: { ok: false, error: null }, ai: { ok: false, error: null } }
 
     if (chainName === '0g') {
       // 0G: use direct RPC (no Etherscan API support)
-      const zgInfo = await getZeroGContractInfo(address).catch(() => ({}))
-      analysis = analyzeContract(null, null, null, null, address)
-      analysis.chain = '0g'
-      analysis.contractInfo = {
-        name: '0G Contract',
-        compiler: 'unknown',
-        isVerified: false,
-        ...zgInfo
+      try {
+        const zgInfo = await getZeroGContractInfo(address).catch(() => ({}))
+        analysis = analyzeContract(null, null, null, null, address)
+        analysis.chain = '0g'
+        analysis.contractInfo = {
+          name: '0G Contract',
+          compiler: 'unknown',
+          isVerified: false,
+          ...zgInfo
+        }
+        analysis.flags.push({
+          name: '0G Chain',
+          status: 'safe',
+          details: 'Scanned via 0G RPC — source code verification not available'
+        })
+        dataSources.etherscan.ok = true
+        dataSources.etherscan.note = '0G RPC (no Etherscan support)'
+      } catch (zgErr) {
+        dataSources.etherscan.error = `0G RPC failed: ${zgErr.message}`
+        analysis = { address, riskScore: 0, flags: [], summary: '', contractInfo: { name: 'Unknown', compiler: 'unknown', isVerified: false }, holderData: {} }
+        analysis.chain = '0g'
       }
-      analysis.flags.push({
-        name: '0G Chain',
-        status: 'safe',
-        details: 'Scanned via 0G RPC — source code verification not available'
-      })
     } else {
       // EVM chains: use Etherscan V2 API
       const q = (params) => etherscanQuery(params, apiKey, chainId)
-      const [contractSource, holders, txCount, contractInfo, liquidity, goPlus] = await Promise.all([
-        q({ module: 'contract', action: 'getsourcecode', address }).catch(() => null),
-        q({ module: 'token', action: 'tokenholderlist', contractaddress: address, page: 1, offset: 20 }).catch(() => null),
-        q({ module: 'stats', action: 'tokensupply', contractaddress: address }).catch(() => null),
-        getContractInfo(address, apiKey, chainId).catch(() => null),
-        checkLiquidity(address, apiKey, chainId).catch(() => null),
-        getGoPlusSecurity(address, chainName).catch(() => null)
-      ])
+
+      // Track individual source errors
+      let contractSource = null, holders = null, txCount = null, contractInfoData = null, liquidityData = null, goPlusData = null
+
+      const ethPromises = [
+        q({ module: 'contract', action: 'getsourcecode', address }).then(r => { dataSources.etherscan.ok = true; return r }).catch(e => { dataSources.etherscan.error = `Etherscan source: ${e.message}`; return null }),
+        q({ module: 'token', action: 'tokenholderlist', contractaddress: address, page: 1, offset: 20 }).catch(e => { dataSources.etherscan.error = dataSources.etherscan.error || `Etherscan holders: ${e.message}`; return null }),
+        q({ module: 'stats', action: 'tokensupply', contractaddress: address }).catch(e => { dataSources.etherscan.error = dataSources.etherscan.error || `Etherscan supply: ${e.message}`; return null }),
+        getContractInfo(address, apiKey, chainId).catch(e => { dataSources.etherscan.error = dataSources.etherscan.error || `Etherscan info: ${e.message}`; return null }),
+        checkLiquidity(address, apiKey, chainId).catch(e => { dataSources.etherscan.error = dataSources.etherscan.error || `Etherscan liquidity: ${e.message}`; return null }),
+        getGoPlusSecurity(address, chainName).then(r => { if (r) dataSources.goplus.ok = true; return r }).catch(e => { dataSources.goplus.error = `GoPlus: ${e.message}`; return null }),
+      ]
+
+      ;[contractSource, holders, txCount, contractInfoData, liquidityData, goPlusData] = await Promise.all(ethPromises)
+
+      // If ALL etherscan calls failed, return meaningful error
+      if (!dataSources.etherscan.ok && !contractSource) {
+        return res.status(503).json({
+          error: 'Data source unavailable',
+          message: 'Unable to fetch contract data from Etherscan. The API may be rate-limited or temporarily down.',
+          dataSources,
+          suggestion: 'Try again in a few minutes, or try a different chain.'
+        })
+      }
 
       analysis = analyzeContract(contractSource, null, holders, txCount, address)
       analysis.chain = chainName
-      if (contractInfo) analysis.contractInfo = { ...analysis.contractInfo, ...contractInfo }
-      if (liquidity) analysis.liquidity = liquidity
+      if (contractInfoData) analysis.contractInfo = { ...analysis.contractInfo, ...contractInfoData }
+      if (liquidityData) analysis.liquidity = liquidityData
 
       // GoPlus security data
-      if (goPlus) {
-        const { flags: gpFlags, riskBoost } = goPlusToFlags(goPlus)
+      if (goPlusData) {
+        const { flags: gpFlags, riskBoost } = goPlusToFlags(goPlusData)
         analysis.flags = [...analysis.flags, ...gpFlags]
         analysis.riskScore = Math.min(100, analysis.riskScore + riskBoost)
-        analysis.goPlus = goPlus
+        analysis.goPlus = goPlusData
       }
     }
+
+    // Attach data source status to response
+    analysis.dataSources = dataSources
 
     // Attach chain suggestion to response
     if (chainSuggestion) {
@@ -102,8 +130,15 @@ export default async function handler(req, res) {
     }
 
     // Social signals
-    const social = await checkSocialSignals(analysis.contractInfo?.name || '', address).catch(() => null)
-    if (social) analysis.social = social
+    try {
+      const social = await checkSocialSignals(analysis.contractInfo?.name || '', address)
+      if (social) {
+        analysis.social = social
+        dataSources.social.ok = true
+      }
+    } catch (socialErr) {
+      dataSources.social.error = `Social signals: ${socialErr.message}`
+    }
 
     // AI analysis — PRIMARY SCORE SOURCE
     try {
@@ -113,6 +148,7 @@ export default async function handler(req, res) {
         body: JSON.stringify(analysis),
         signal: AbortSignal.timeout(30000)
       })
+      if (!aiResp.ok) throw new Error(`AI proxy HTTP ${aiResp.status}`)
       const aiResult = await aiResp.json()
       if (aiResult.success) {
         analysis.summary = aiResult.summary
@@ -120,11 +156,11 @@ export default async function handler(req, res) {
         analysis.aiDetails = aiResult.details || null
         analysis.aiRecommendations = aiResult.recommendations || null
         analysis.aiConfidence = aiResult.confidence || null
-        // AI provides summary & analysis but NOT risk score — rule-based is authoritative
-        // This ensures consistent scoring across scans
+        dataSources.ai.ok = true
       }
     } catch (aiErr) {
       console.log('AI proxy failed:', aiErr.message)
+      dataSources.ai.error = `AI analysis: ${aiErr.message}`
       analysis.aiSource = 'rule-based'
     }
 
