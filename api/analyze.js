@@ -1,5 +1,5 @@
 // POST /api/analyze — Vercel serverless function
-import { etherscanQuery, analyzeContract, getContractInfo, checkLiquidity, getChainId } from '../lib/etherscan.js'
+import { etherscanQuery, analyzeContract, getContractInfo, checkLiquidity, getChainId, rpcCall } from '../lib/etherscan.js'
 import { checkSocialSignals } from '../lib/social.js'
 import { getGoPlusSecurity, goPlusToFlags } from '../lib/goplus.js'
 import { getZeroGContractInfo } from '../lib/zeroG.js'
@@ -120,6 +120,17 @@ export default async function handler(req, res) {
       ]
 
       ;[contractSource, holders, txCount, contractInfoData, liquidityData, goPlusData] = await Promise.all(ethPromises)
+
+      // Fallback: if token supply is null (Etherscan free API doesn't support chain), use RPC
+      if (!txCount && chainId !== 1) {
+        try {
+          // ERC-20 totalSupply() = 0x18160ddd
+          const supplyHex = await rpcCall(chainId, 'eth_call', [{ to: address, data: '0x18160ddd' }, 'latest'])
+          if (supplyHex && supplyHex !== '0x' && supplyHex !== '0x0') {
+            txCount = { result: BigInt(supplyHex).toString() }
+          }
+        } catch {}
+      }
 
       // If ALL etherscan calls failed, return meaningful error
       if (!dataSources.etherscan.ok && !contractSource) {
