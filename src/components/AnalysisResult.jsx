@@ -164,6 +164,45 @@ export default function AnalysisResult({ analysis }) {
         </div>
       )}
 
+      {/* Social Signals */}
+      {analysis.social && (
+        <div className="bg-cyber-dark/80 border border-cyber-purple/20 rounded-2xl p-6 backdrop-blur-sm">
+          <div className="flex items-center gap-2 mb-4">
+            <span className="text-lg">📡</span>
+            <span className="text-gray-400 text-sm uppercase tracking-wider">Social Signals</span>
+          </div>
+          <div className="grid grid-cols-3 gap-4 mb-3">
+            <div className="text-center p-3 bg-gray-800/50 rounded-lg">
+              <div className={`text-lg font-bold ${analysis.social.sentiment === 'high' ? 'text-green-400' : analysis.social.sentiment === 'moderate' ? 'text-yellow-400' : 'text-red-400'}`}>
+                {analysis.social.twitterMentions}
+              </div>
+              <div className="text-xs text-gray-400">Online Mentions</div>
+            </div>
+            <div className="text-center p-3 bg-gray-800/50 rounded-lg">
+              <div className={`text-lg font-bold ${analysis.social.hasWebsite ? 'text-green-400' : 'text-red-400'}`}>
+                {analysis.social.hasWebsite ? '✓' : '✗'}
+              </div>
+              <div className="text-xs text-gray-400">Website</div>
+            </div>
+            <div className="text-center p-3 bg-gray-800/50 rounded-lg">
+              <div className={`text-lg font-bold ${analysis.social.hasGitHub ? 'text-green-400' : 'text-red-400'}`}>
+                {analysis.social.hasGitHub ? '✓' : '✗'}
+              </div>
+              <div className="text-xs text-gray-400">GitHub</div>
+            </div>
+          </div>
+          {analysis.social.redFlags.length > 0 && (
+            <div className="space-y-1">
+              {analysis.social.redFlags.map((flag, i) => (
+                <div key={i} className="text-sm text-yellow-400 flex items-center gap-2">
+                  <span>⚠️</span> {flag}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Disclaimer */}
       <div className="text-center text-xs text-gray-500 py-4 border-t border-gray-800">
         ⚠️ This is NOT financial advice. Always do your own research (DYOR) before investing.

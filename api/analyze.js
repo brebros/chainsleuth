@@ -1,5 +1,6 @@
 // POST /api/analyze — Vercel serverless function
 import { etherscanQuery, analyzeContract, getContractInfo, checkLiquidity } from '../lib/etherscan.js'
+import { checkSocialSignals } from '../lib/social.js'
 
 const VPS_URL = process.env.VPS_0G_URL || 'http://77.90.51.232:3001'
 
@@ -36,6 +37,12 @@ export default async function handler(req, res) {
     }
     if (liquidity) {
       analysis.liquidity = liquidity
+    }
+
+    // Social signals
+    const social = await checkSocialSignals(analysis.contractInfo?.name || '', address).catch(() => null)
+    if (social) {
+      analysis.social = social
     }
 
     // AI analysis via VPS
