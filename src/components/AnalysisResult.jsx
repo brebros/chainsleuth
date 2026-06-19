@@ -2,6 +2,8 @@ import React from 'react'
 import GoPlusPanel from './GoPlusPanel'
 import ShareButton from './ShareButton'
 import RiskExplanation from './RiskExplanation'
+import ExportButton from './ExportButton'
+import ContractAge from './ContractAge'
 
 export default function AnalysisResult({ analysis }) {
   const getFlagIcon = (status) => {
@@ -38,6 +40,17 @@ export default function AnalysisResult({ analysis }) {
 
   return (
     <div className="w-full max-w-2xl mx-auto space-y-6">
+      {/* Print header — only shows in print */}
+      <div className="print-header hidden">
+        <h1>ChainSleuth Security Report</h1>
+        <p>Generated {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })} • chainsleuth.vercel.app</p>
+      </div>
+
+      {/* Export button */}
+      <div className="flex justify-end no-print">
+        <ExportButton analysis={analysis} />
+      </div>
+
       {/* Partial data warning */}
       {hasPartialData && (
         <div className="p-4 rounded-xl border bg-yellow-500/10 border-yellow-500/30 text-yellow-400 backdrop-blur-sm">
@@ -114,6 +127,9 @@ export default function AnalysisResult({ analysis }) {
           </div>
         </div>
         <div className="flex flex-wrap gap-2 mt-3">
+          {analysis.contractInfo?.age != null && (
+            <ContractAge ageDays={analysis.contractInfo.age} />
+          )}
           {analysis.contractInfo?.isProxy && (
             <span className="px-2 py-1 bg-yellow-500/20 text-yellow-400 text-xs rounded border border-yellow-500/30">
               ⚠️ Proxy Contract

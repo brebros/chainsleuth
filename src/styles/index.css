@@ -126,3 +126,35 @@ input:focus {
 .glow-yellow {
   box-shadow: 0 0 30px rgba(245, 158, 11, 0.15);
 }
+
+/* Print / PDF export styles */
+@media print {
+  body { background: white !important; color: #111 !important; }
+  * { color-adjust: exact !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  .no-print, nav, footer, .animate-pulse, .animate-spin,
+  button:not(.print-show), input, [data-no-print] { display: none !important; }
+  .bg-gray-950, .bg-gray-900, .bg-gray-800, .bg-gray-700,
+  .bg-cyber-dark, .bg-cyber-darker,
+  .bg-gradient-to-br, .bg-gradient-to-r,
+  [class*="bg-"] { background: white !important; border-color: #e5e7eb !important; }
+  .text-white, .text-gray-200, .text-gray-300, .text-gray-400 { color: #374151 !important; }
+  .text-purple-400, .text-cyber-purple { color: #7c3aed !important; }
+  .text-green-400 { color: #059669 !important; }
+  .text-yellow-400 { color: #d97706 !important; }
+  .text-red-400 { color: #dc2626 !important; }
+  .text-blue-400 { color: #2563eb !important; }
+  .border-purple-500\/20, .border-purple-500\/30,
+  .border-green-500\/20, .border-green-500\/30,
+  .border-yellow-500\/20, .border-yellow-500\/30,
+  .border-red-500\/20, .border-red-500\/30,
+  .border-gray-700, .border-gray-800 { border-color: #d1d5db !important; }
+  .shadow-2xl, .shadow-xl, [class*="shadow-"] { box-shadow: none !important; }
+  .container { max-width: 100% !important; padding: 0 !important; }
+  main { padding: 20px !important; }
+  .rounded-2xl, .rounded-xl, .rounded-lg, .rounded-full { border-radius: 8px !important; }
+  .print-header { display: block !important; text-align: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #e5e7eb; }
+  .print-header h1 { font-size: 24px; font-weight: bold; color: #111; }
+  .print-header p { font-size: 12px; color: #6b7280; }
+  .page-break-before { page-break-before: always; }
+  .page-break-avoid { page-break-inside: avoid; }
+}
