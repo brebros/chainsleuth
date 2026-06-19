@@ -20,7 +20,7 @@ export default function AnalysisResult({ analysis }) {
     }
   }
 
-  const chainNames = { eth: 'Ethereum', bsc: 'BNB Chain', base: 'Base', polygon: 'Polygon', arbitrum: 'Arbitrum' }
+  const chainNames = { eth: 'Ethereum', bsc: 'BNB Chain', base: 'Base', polygon: 'Polygon', arbitrum: 'Arbitrum', '0g': '0G Network' }
 
   return (
     <div className="w-full max-w-2xl mx-auto space-y-6">

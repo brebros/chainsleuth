@@ -6,6 +6,7 @@ const CHAINS = [
   { id: 'base', name: 'Base', icon: '🔵', color: 'text-blue-300' },
   { id: 'polygon', name: 'Polygon', icon: '🟣', color: 'text-purple-400' },
   { id: 'arbitrum', name: 'Arbitrum', icon: '🔵', color: 'text-blue-500' },
+  { id: '0g', name: '0G', icon: '⚫', color: 'text-white' },
 ]
 
 const EXAMPLES = {
@@ -28,6 +29,9 @@ const EXAMPLES = {
   ],
   arbitrum: [
     { name: 'GMX', addr: '0xfc5A1A6EB076a2C7aD06eD22C90d7E710E35ad0a', tag: 'Perps' },
+  ],
+  '0g': [
+    { name: '0G Storage', addr: '0x62D4144dB0F0a6fBBaeb6296c785C71B3D57C526', tag: 'Infra' },
   ],
 }
 
