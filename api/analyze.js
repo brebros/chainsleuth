@@ -20,7 +20,6 @@ export default async function handler(req, res) {
     const apiKey = process.env.ETHERSCAN_API_KEY || ''
     const delay = ms => new Promise(r => setTimeout(r, ms))
 
-    // Parallel fetches
     const [contractSource, holders, txCount, contractInfo, liquidity] = await Promise.all([
       etherscanQuery({ module: 'contract', action: 'getsourcecode', address }, apiKey).catch(() => null),
       etherscanQuery({ module: 'token', action: 'tokenholderlist', contractaddress: address, page: 1, offset: 20 }, apiKey).catch(() => null),
@@ -30,22 +29,14 @@ export default async function handler(req, res) {
     ])
 
     const analysis = analyzeContract(contractSource, null, holders, txCount, address)
-
-    // Add extra data
-    if (contractInfo) {
-      analysis.contractInfo = { ...analysis.contractInfo, ...contractInfo }
-    }
-    if (liquidity) {
-      analysis.liquidity = liquidity
-    }
+    if (contractInfo) analysis.contractInfo = { ...analysis.contractInfo, ...contractInfo }
+    if (liquidity) analysis.liquidity = liquidity
 
     // Social signals
     const social = await checkSocialSignals(analysis.contractInfo?.name || '', address).catch(() => null)
-    if (social) {
-      analysis.social = social
-    }
+    if (social) analysis.social = social
 
-    // AI analysis via VPS
+    // AI analysis — PRIMARY SCORE SOURCE
     try {
       const aiResp = await fetch(VPS_URL + '/api/ai-analyze', {
         method: 'POST',
@@ -60,8 +51,9 @@ export default async function handler(req, res) {
         analysis.aiDetails = aiResult.details || null
         analysis.aiRecommendations = aiResult.recommendations || null
         analysis.aiConfidence = aiResult.confidence || null
+        // AI score is PRIMARY — override rule-based
         if (aiResult.riskScore !== null && aiResult.riskScore !== undefined) {
-          analysis.riskScore = Math.max(0, Math.min(100, aiResult.riskScore))
+          analysis.riskScore = aiResult.riskScore
         }
       }
     } catch (aiErr) {

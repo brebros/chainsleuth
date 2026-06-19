@@ -1,5 +1,4 @@
 // ChainSleuth 0G Compute Proxy — runs on VPS
-// Vercel calls this endpoint for AI analysis (0G Compute needs same-IP auth)
 import express from 'express'
 import cors from 'cors'
 import fs from 'fs'
@@ -33,9 +32,44 @@ function initCompute() {
   } catch (e) { console.error('Failed to load 0G config:', e.message); return false }
 }
 
+const SYSTEM_PROMPT = `You are a blockchain security expert. Analyze smart contracts for rug pull risk.
+
+You MUST respond in this exact JSON format:
+{
+  "riskScore": <number 0-100>,
+  "riskLevel": "<LOW|MEDIUM|HIGH>",
+  "summary": "<2-3 sentence overall assessment>",
+  "details": [
+    {"category": "<name>", "status": "<safe|warning|danger>", "explanation": "<why>"}
+  ],
+  "recommendations": ["<actionable advice>"],
+  "confidence": <0.0-1.0>
+}
+
+SCORING RULES (STRICT):
+- 0-20: Verified, no owner, no honeypot, clean code (UNI, COMP, DAI, LINK, WETH)
+- 21-40: Verified but has owner functions OR capped mint (USDT, LDO, MATIC)
+- 41-60: Owner functions + other warnings, OR unverified but clean code (USDC, SUSHI, 1INCH)
+- 61-80: Unverified + suspicious patterns, OR honeypot patterns detected
+- 81-100: Unverified + honeypot + mint + high concentration = DEFINITE RUG
+
+KEY FACTORS:
+- Owner functions (onlyOwner, transferOwnership) = +15 points
+- Honeypot patterns (blacklist, canSell, antiBot, maxWallet, tradingEnabled) = +20 points  
+- Unverified source code = +20 points
+- Mint without cap = +15 points
+- Top 10 holders > 50% = +10 points
+- Verified + no owner + no honeypot = -10 points (bonus)
+- Proxy contract = +5 points
+
+Be STRICT. If owner has too much control, score HIGH. If honeypot patterns exist, score HIGH.
+If everything is clean and verified, score LOW.
+
+Provide detailed explanations for each finding.`
+
 app.post('/api/ai-analyze', async (req, res) => {
   if (!zgApiKey) {
-    return res.json({ success: false, summary: '0G Compute not configured', source: 'unavailable', riskScore: null, details: null })
+    return res.json({ success: false, summary: '0G Compute not configured', source: 'unavailable', riskScore: null, details: null, recommendations: null, confidence: null })
   }
   try {
     const cd = req.body
@@ -47,35 +81,7 @@ app.post('/api/ai-analyze', async (req, res) => {
       body: JSON.stringify({
         model: zgModel,
         messages: [
-          { role: 'system', content: `You are a blockchain security expert analyzing smart contracts for rug pull indicators. You MUST respond in this exact JSON format:
-{
-  "riskScore": <number 0-100>,
-  "riskLevel": "<LOW|MEDIUM|HIGH>",
-  "summary": "<2-3 sentence overall assessment>",
-  "details": [
-    {"category": "<category name>", "status": "<safe|warning|danger>", "explanation": "<detailed explanation>"},
-    ...
-  ],
-  "recommendations": [
-    "<actionable recommendation 1>",
-    "<actionable recommendation 2>",
-    ...
-  ],
-  "confidence": <0.0-1.0>
-}
-
-Risk score guide: 0-30=LOW (safe), 31-70=MEDIUM (caution), 71-100=HIGH (danger).
-
-Analyze these aspects:
-1. Contract Verification - Is source code verified? Any hidden functions?
-2. Owner Control - Can owner mint, pause, blacklist, change fees?
-3. Honeypot Patterns - Any sell restrictions, blacklists, anti-bot mechanisms?
-4. Token Economics - Is supply capped? Any mint function?
-5. Holder Distribution - Is concentration too high?
-6. Code Quality - Any suspicious patterns (selfdestruct, delegatecall)?
-7. Liquidity Risk - Is LP locked?
-
-Always provide detailed explanations for each finding. Be thorough but concise.` },
+          { role: 'system', content: SYSTEM_PROMPT },
           { role: 'user', content: prompt }
         ],
         temperature: 0.3,
@@ -85,20 +91,20 @@ Always provide detailed explanations for each finding. Be thorough but concise.`
     if (!resp.ok) {
       const err = await resp.text()
       console.error('0G error:', resp.status, err.substring(0, 200))
-      return res.json({ success: false, summary: '0G Compute error: ' + resp.status, source: 'error', riskScore: null, details: null })
+      return res.json({ success: false, summary: '0G Compute error', source: 'error', riskScore: null, details: null, recommendations: null, confidence: null })
     }
     const data = await resp.json()
     const content = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content
-    if (!content) return res.json({ success: false, summary: 'Empty AI response', source: 'error', riskScore: null, details: null })
+    if (!content) return res.json({ success: false, summary: 'Empty response', source: 'error', riskScore: null, details: null, recommendations: null, confidence: null })
 
     let parsed = null
     try {
       const jsonMatch = content.match(/\{[\s\S]*\}/)
       if (jsonMatch) parsed = JSON.parse(jsonMatch[0])
-    } catch (e) { console.log('AI response not JSON, using as summary only') }
+    } catch (e) { console.log('AI response not JSON') }
 
     const summary = parsed ? parsed.summary : content
-    const aiRiskScore = parsed ? parsed.riskScore : null
+    const aiRiskScore = parsed ? Math.max(0, Math.min(100, parsed.riskScore)) : null
     const details = parsed ? parsed.details : null
     const recommendations = parsed ? parsed.recommendations : null
     const confidence = parsed ? parsed.confidence : null
@@ -106,7 +112,7 @@ Always provide detailed explanations for each finding. Be thorough but concise.`
     console.log('AI done for', (cd.address || '').substring(0, 10), 'score:', aiRiskScore)
     res.json({ success: true, summary: summary, source: '0g-compute', riskScore: aiRiskScore, details: details, recommendations: recommendations, confidence: confidence })
   } catch (error) {
-    console.error('AI analyze error:', error.message)
+    console.error('AI error:', error.message)
     res.json({ success: false, summary: 'AI analysis failed', source: 'error', riskScore: null, details: null, recommendations: null, confidence: null })
   }
 })
@@ -118,7 +124,12 @@ function buildPrompt(d) {
   const f = (d.flags || []).map(function(x) { return '- ' + x.name + ': ' + x.status.toUpperCase() + ' - ' + x.details }).join('\n') || 'None'
   const h = (d.holderData && d.holderData.totalHolders) || 'Unknown'
   const c = (d.holderData && d.holderData.top10Concentration) || 'Unknown'
-  return 'Analyze this smart contract for rug pull risk:\n\nContract: ' + d.address + '\nName: ' + n + '\nVerified: ' + v + '\nRule-based Risk Score: ' + s + '/100\n\nFlags:\n' + f + '\n\nHolder Data:\n- Total holders: ' + h + '\n- Top 10 concentration: ' + c + '%\n\nProvide your own risk assessment as JSON with riskScore (0-100), riskLevel (LOW/MEDIUM/HIGH), summary, details array, recommendations array, and confidence (0.0-1.0).'
+  const age = d.contractInfo?.age || 'Unknown'
+  const txCount = d.contractInfo?.txCount || 'Unknown'
+  const isProxy = d.contractInfo?.isProxy ? 'Yes' : 'No'
+  const liquidity = d.liquidity?.hasLiquidity ? 'Yes' : 'No'
+
+  return 'Contract: ' + d.address + '\nName: ' + n + '\nVerified: ' + v + '\nRule-based Score: ' + s + '/100\nAge: ' + age + ' days\nTransactions: ' + txCount + '\nProxy: ' + isProxy + '\nLiquidity: ' + liquidity + '\n\nFlags:\n' + f + '\n\nHolder Data:\n- Total holders: ' + h + '\n- Top 10 concentration: ' + c + '%\n\nProvide your risk assessment as JSON with riskScore (0-100), riskLevel (LOW/MEDIUM/HIGH), summary, details, recommendations, and confidence.'
 }
 
 app.get('/api/health', function(req, res) {
