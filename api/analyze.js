@@ -1,5 +1,5 @@
 // POST /api/analyze — Vercel serverless function
-import { etherscanQuery, analyzeContract } from '../lib/etherscan.js'
+import { etherscanQuery, analyzeContract, getContractInfo, checkLiquidity } from '../lib/etherscan.js'
 
 const VPS_URL = process.env.VPS_0G_URL || 'http://77.90.51.232:3001'
 
@@ -19,20 +19,23 @@ export default async function handler(req, res) {
     const apiKey = process.env.ETHERSCAN_API_KEY || ''
     const delay = ms => new Promise(r => setTimeout(r, ms))
 
-    const contractSource = await etherscanQuery({ module: 'contract', action: 'getsourcecode', address }, apiKey).catch(() => null)
-    await delay(300)
-    const holders = await etherscanQuery({ module: 'token', action: 'tokenholderlist', contractaddress: address, page: 1, offset: 20 }, apiKey).catch(() => null)
-    await delay(300)
-    const txCount = await etherscanQuery({ module: 'stats', action: 'tokensupply', contractaddress: address }, apiKey).catch(() => null)
-    await delay(300)
-    const tokenTx = await etherscanQuery({ module: 'account', action: 'tokentx', address, page: 1, offset: 10, sort: 'desc' }, apiKey).catch(() => null)
+    // Parallel fetches
+    const [contractSource, holders, txCount, contractInfo, liquidity] = await Promise.all([
+      etherscanQuery({ module: 'contract', action: 'getsourcecode', address }, apiKey).catch(() => null),
+      etherscanQuery({ module: 'token', action: 'tokenholderlist', contractaddress: address, page: 1, offset: 20 }, apiKey).catch(() => null),
+      etherscanQuery({ module: 'stats', action: 'tokensupply', contractaddress: address }, apiKey).catch(() => null),
+      getContractInfo(address, apiKey).catch(() => null),
+      checkLiquidity(address, apiKey).catch(() => null)
+    ])
 
     const analysis = analyzeContract(contractSource, null, holders, txCount, address)
 
     // Add extra data
-    if (tokenTx?.result?.length > 0) {
-      analysis.recentActivity = tokenTx.result.length
-      analysis.lastActivity = tokenTx.result[0].timeStamp ? new Date(parseInt(tokenTx.result[0].timeStamp) * 1000).toISOString() : null
+    if (contractInfo) {
+      analysis.contractInfo = { ...analysis.contractInfo, ...contractInfo }
+    }
+    if (liquidity) {
+      analysis.liquidity = liquidity
     }
 
     // AI analysis via VPS
