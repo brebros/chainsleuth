@@ -24,6 +24,20 @@ export default function AnalysisResult({ analysis }) {
 
   return (
     <div className="w-full max-w-2xl mx-auto space-y-6">
+      {/* Chain suggestion banner */}
+      {analysis.chainSuggestion && (
+        <div className={`p-4 rounded-xl border backdrop-blur-sm ${
+          analysis.chainSuggestion.type === 'switched'
+            ? 'bg-blue-500/10 border-blue-500/30 text-blue-400'
+            : 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400'
+        }`}>
+          <div className="flex items-center gap-2">
+            <span className="text-lg">{analysis.chainSuggestion.type === 'switched' ? '🔄' : '⚠️'}</span>
+            <span className="text-sm font-medium">{analysis.chainSuggestion.message}</span>
+          </div>
+        </div>
+      )}
+
       {/* Contract Info Card */}
       <div className="bg-cyber-dark/80 border border-cyber-purple/20 rounded-2xl p-6 backdrop-blur-sm">
         <div className="flex items-center justify-between mb-4">

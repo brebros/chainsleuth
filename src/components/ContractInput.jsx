@@ -74,6 +74,13 @@ export default function ContractInput({ onAnalyze, loading }) {
         ))}
       </div>
 
+      {/* Auto-detect hint */}
+      <div className="text-center mb-3">
+        <span className="text-xs text-gray-500">
+          ⚡ Auto-detect enabled — wrong chain? We'll find it for you
+        </span>
+      </div>
+
       <form onSubmit={handleSubmit} className="relative">
         <div className="flex gap-3">
           <div className="flex-1 relative">
@@ -81,7 +88,7 @@ export default function ContractInput({ onAnalyze, loading }) {
               type="text"
               value={address}
               onChange={(e) => setAddress(e.target.value)}
-              placeholder={`Paste ${currentChain.name} contract address (0x...)`}
+              placeholder={`Paste any EVM address (auto-detects chain)`}
               className="w-full px-6 py-4 bg-cyber-dark border border-cyber-purple/30 rounded-xl text-white placeholder-gray-500 font-mono text-lg focus:border-cyber-purple focus:ring-2 focus:ring-cyber-purple/20 transition-all"
               disabled={loading}
             />

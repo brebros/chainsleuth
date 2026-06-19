@@ -3,6 +3,7 @@ import { etherscanQuery, analyzeContract, getContractInfo, checkLiquidity, getCh
 import { checkSocialSignals } from '../lib/social.js'
 import { getGoPlusSecurity, goPlusToFlags } from '../lib/goplus.js'
 import { getZeroGContractInfo } from '../lib/zeroG.js'
+import { detectChain } from '../lib/chainDetect.js'
 
 const VPS_URL = process.env.VPS_0G_URL || 'http://77.90.51.232:3001'
 
@@ -15,15 +16,33 @@ export default async function handler(req, res) {
 
   try {
     const { address, chain } = req.body
-    const chainName = chain || 'eth'
-    const chainId = getChainId(chainName)
+    const selectedChain = chain || 'eth'
 
     if (!address || !/^0x[a-fA-F0-9]{40}$/.test(address)) {
       return res.status(400).json({ error: 'Invalid contract address' })
     }
 
-    const apiKey = process.env.ETHERSCAN_API_KEY || ''
+    // Auto-detect chain: quick-check if contract exists on selected chain
+    const detection = await detectChain(address, selectedChain)
+    let chainName = detection.detectedChain
+    let chainSuggestion = null
 
+    if (!detection.isContract) {
+      chainSuggestion = {
+        type: 'warning',
+        message: 'This address has no contract code on any supported chain. It may be a wallet address (EOA).',
+        detectedChain: null
+      }
+    } else if (chainName !== selectedChain) {
+      chainSuggestion = {
+        type: 'switched',
+        message: `Contract found on ${chainName.toUpperCase()}, not ${selectedChain.toUpperCase()}. Auto-switched.`,
+        detectedChain: chainName
+      }
+    }
+
+    const chainId = getChainId(chainName)
+    const apiKey = process.env.ETHERSCAN_API_KEY || ''
     let analysis
 
     if (chainName === '0g') {
@@ -66,6 +85,11 @@ export default async function handler(req, res) {
         analysis.riskScore = Math.min(100, analysis.riskScore + riskBoost)
         analysis.goPlus = goPlus
       }
+    }
+
+    // Attach chain suggestion to response
+    if (chainSuggestion) {
+      analysis.chainSuggestion = chainSuggestion
     }
 
     // Social signals
