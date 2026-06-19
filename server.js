@@ -112,7 +112,7 @@ app.get('/api/health', (req, res) => {
 
 function analyzeContract(contractSource, tokenInfo, holders, txCount, address) {
   const flags = []
-  let riskScore = 50 // Start at neutral
+  let riskScore = 0 // Start at 0 (safe baseline)
 
   // 1. Contract verification check
   const isVerified = contractSource?.result?.[0]?.SourceCode && contractSource.result[0].SourceCode !== ''
@@ -139,10 +139,12 @@ function analyzeContract(contractSource, tokenInfo, holders, txCount, address) {
         ? 'Owner functions detected — developer retains control'
         : 'No owner functions found in contract'
   })
-  if (hasOwnerFunction) riskScore += 10
+  // Owner functions only risky on unverified contracts
+  if (hasOwnerFunction && !isVerified) riskScore += 10
 
   // 3. Honeypot check
-  const hasSellRestriction = sourceCode.includes('canSell') || sourceCode.includes('isBlacklisted') || sourceCode.includes('maxTxAmount')
+  const honeypotPatterns = ['canSell', 'isBlacklisted', 'maxTxAmount', 'blacklist', 'whiteList', '_isExcluded', 'antiBot', 'maxWallet', 'tradingEnabled']
+  const hasSellRestriction = honeypotPatterns.some(p => sourceCode.includes(p))
   flags.push({
     name: 'Honeypot Check',
     status: !hasSellRestriction ? 'safe' : 'danger',
@@ -164,9 +166,19 @@ function analyzeContract(contractSource, tokenInfo, holders, txCount, address) {
         ? 'Mint function found but supply is capped'
         : 'No mint function or supply is fixed'
   })
-  if (hasMint && !hasCap) riskScore += 15
+  if (hasMint && !hasCap && !isVerified) riskScore += 15
+  else if (hasMint && !hasCap) riskScore += 5
 
-  // 5. Holder distribution
+  // 5. Suspicious code patterns
+  const suspiciousPatterns = ['selfDestruct', 'delegatecall', 'suicide']
+  const suspHits = suspiciousPatterns.filter(p => sourceCode.includes(p))
+  if (suspHits.length > 0) {
+    riskScore += 15
+    flags.push({ name: 'Dangerous Code', status: 'danger',
+      details: 'Found: ' + suspHits.join(', ') + ' — potential exploit vector' })
+  }
+
+  // 6. Holder distribution
   const holderList = holders?.result || []
   const totalSupply = parseInt(txCount?.result || '0')
   let top10Concentration = 0
@@ -186,15 +198,20 @@ function analyzeContract(contractSource, tokenInfo, holders, txCount, address) {
   if (top10Concentration > 50) riskScore += 15
   else if (top10Concentration > 30) riskScore += 5
 
-  // 6. Liquidity lock
+  // 7. Liquidity lock
   flags.push({
     name: 'LP Locked',
     status: 'warning',
     details: 'Liquidity lock status requires DEX-specific data — manual verification recommended'
   })
 
+  // Bonus: verified + no red flags
+  if (isVerified && !hasSellRestriction && suspHits.length === 0) {
+    riskScore = Math.max(0, riskScore - 5)
+  }
+
   // Clamp risk score
-  riskScore = Math.max(1, Math.min(100, riskScore))
+  riskScore = Math.max(0, Math.min(100, riskScore))
 
   return {
     address,
