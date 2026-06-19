@@ -6,7 +6,33 @@ import { getZeroGContractInfo } from '../lib/zeroG.js'
 import { detectChain } from '../lib/chainDetect.js'
 import { getCachedScore, setCachedScore } from '../lib/scoreCache.js'
 
-const VPS_URL = process.env.VPS_0G_URL || 'http://77.90.51.232:3001'
+// 0G Compute — Direct mode (no VPS proxy needed)
+const ZG_URL = process.env.ZG_COMPUTE_URL || 'https://compute-network-18.integratenetwork.work/v1/proxy/chat/completions'
+const ZG_MODEL = process.env.ZG_COMPUTE_MODEL || 'qwen3.6-plus'
+
+function getZGKey() {
+  const raw = process.env.ZG_COMPUTE_KEY
+  if (!raw) return null
+  try {
+    const decoded = Buffer.from(raw, 'base64').toString('utf8')
+    return decoded.startsWith('app-sk-') ? decoded : raw
+  } catch { return raw }
+}
+
+const ZG_SYSTEM_PROMPT = `You are a blockchain security expert. Analyze smart contracts for rug pull risk.
+You MUST respond in this exact JSON format:
+{"riskScore": <0-100>, "riskLevel": "<LOW|MEDIUM|HIGH>", "summary": "<2-3 sentences>", "details": [{"category": "<name>", "status": "<safe|warning|danger>", "explanation": "<why>"}], "recommendations": ["<actionable advice>"], "confidence": <0.0-1.0>}
+SCORING: 0-20 verified+clean, 21-40 verified+minor flags, 41-60 unverified+clean or verified+warnings, 61-80 unverified+suspicious, 81-100 definite rug.
+VERIFIED contracts with owner functions are NORMAL. Blacklist on verified = compliance. Only flag honeypot on unverified contracts.`
+
+function buildZGPrompt(d) {
+  const v = d.contractInfo?.isVerified ? 'Yes' : 'No'
+  const n = (d.contractInfo?.name || 'Unknown').replace(/[^\w\s.-]/g, '').substring(0, 50)
+  const f = (d.flags || []).map(x => `- ${x.name}: ${x.status.toUpperCase()} - ${x.details}`).join('\n') || 'None'
+  const h = d.holderData?.totalHolders || 'Unknown'
+  const c = d.holderData?.top10Concentration || 'Unknown'
+  return `Contract: ${d.address}\nName: ${n}\nVerified: ${v}\nRule-based Score: ${d.riskScore}/100\nAge: ${d.contractInfo?.age ?? 'Unknown'} days\nProxy: ${d.contractInfo?.isProxy ? 'Yes' : 'No'}\nLiquidity: ${d.liquidity?.hasLiquidity ? 'Yes' : 'No'}\n\nFlags:\n${f}\n\nHolder Data:\n- Total holders: ${h}\n- Top 10 concentration: ${c}%\n\nProvide your risk assessment as JSON.`
+}
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
@@ -164,27 +190,49 @@ export default async function handler(req, res) {
       dataSources.social.error = `Social signals: ${socialErr.message}`
     }
 
-    // AI analysis — PRIMARY SCORE SOURCE
-    try {
-      const aiResp = await fetch(VPS_URL + '/api/ai-analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(analysis),
-        signal: AbortSignal.timeout(30000)
-      })
-      if (!aiResp.ok) throw new Error(`AI proxy HTTP ${aiResp.status}`)
-      const aiResult = await aiResp.json()
-      if (aiResult.success) {
-        analysis.summary = aiResult.summary
-        analysis.aiSource = aiResult.source
-        analysis.aiDetails = aiResult.details || null
-        analysis.aiRecommendations = aiResult.recommendations || null
-        analysis.aiConfidence = aiResult.confidence || null
-        dataSources.ai.ok = true
+    // AI analysis — Direct 0G Compute (no VPS proxy)
+    const zgKey = getZGKey()
+    if (zgKey) {
+      try {
+        const zgPrompt = buildZGPrompt(analysis)
+        const aiResp = await fetch(ZG_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + zgKey },
+          body: JSON.stringify({
+            model: ZG_MODEL,
+            messages: [
+              { role: 'system', content: ZG_SYSTEM_PROMPT },
+              { role: 'user', content: zgPrompt }
+            ],
+            temperature: 0.3,
+            max_tokens: 500
+          }),
+          signal: AbortSignal.timeout(25000)
+        })
+        if (!aiResp.ok) {
+          const errText = await aiResp.text().catch(() => '')
+          throw new Error(`0G HTTP ${aiResp.status}: ${errText.substring(0, 100)}`)
+        }
+        const aiData = await aiResp.json()
+        const content = aiData.choices?.[0]?.message?.content
+        if (content) {
+          let parsed = null
+          try { const m = content.match(/\{[\s\S]*\}/); if (m) parsed = JSON.parse(m[0]) } catch {}
+          analysis.summary = parsed?.summary || content.substring(0, 200)
+          analysis.aiSource = '0g-compute'
+          analysis.aiDetails = parsed?.details || null
+          analysis.aiRecommendations = parsed?.recommendations || null
+          analysis.aiConfidence = parsed?.confidence || null
+          if (parsed?.riskScore != null) analysis.aiRiskScore = Math.max(0, Math.min(100, parsed.riskScore))
+          dataSources.ai.ok = true
+        }
+      } catch (aiErr) {
+        console.log('0G Compute failed:', aiErr.message)
+        dataSources.ai.error = `0G Compute: ${aiErr.message}`
+        analysis.aiSource = 'rule-based'
       }
-    } catch (aiErr) {
-      console.log('AI proxy failed:', aiErr.message)
-      dataSources.ai.error = `AI analysis: ${aiErr.message}`
+    } else {
+      dataSources.ai.error = '0G Compute: no API key configured'
       analysis.aiSource = 'rule-based'
     }
 
