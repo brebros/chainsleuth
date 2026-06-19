@@ -57,7 +57,7 @@ export default function AnalysisResult({ analysis }) {
           </div>
           <div className="text-center">
             <div className="text-lg font-bold text-white font-mono truncate">
-              {analysis.holderData?.totalSupply && analysis.holderData.totalSupply !== 'N/A'
+              {analysis.holderData?.totalSupply && analysis.holderData.totalSupply !== 'N/A' && !isNaN(analysis.holderData.totalSupply)
                 ? Number(analysis.holderData.totalSupply).toLocaleString() : '—'}
             </div>
             <div className="text-xs text-gray-400">Total Supply</div>
