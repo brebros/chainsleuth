@@ -5,6 +5,8 @@ export default function RiskScore({ score }) {
   const [rotation, setRotation] = useState(0)
 
   useEffect(() => {
+    if (score == null || isNaN(score)) return
+
     // Animate score counting up
     const duration = 1500
     const steps = 60

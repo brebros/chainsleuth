@@ -77,10 +77,12 @@ function App() {
       const data = await response.json()
       setAnalysis(data)
 
-      // Increment scan count
-      const newCount = scanCount + 1
-      setScanCount(newCount)
-      try { localStorage.setItem('chainsleuth_scan_count', String(newCount)) } catch {}
+      // Increment scan count (functional update avoids stale closure)
+      setScanCount(prev => {
+        const next = prev + 1
+        try { localStorage.setItem('chainsleuth_scan_count', String(next)) } catch {}
+        return next
+      })
 
       // Save to history
       try {

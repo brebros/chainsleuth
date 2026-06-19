@@ -135,7 +135,8 @@ export default function AnalysisResult({ analysis }) {
       <GoPlusPanel goPlus={analysis.goPlus} />
 
       {/* Security Checklist */}
-      <div className="bg-cyber-dark/80 border border-cyber-purple/20 rounded-2xl p-6 backdrop-blur-sm">
+      {analysis.flags && analysis.flags.length > 0 && (
+        <div className="bg-cyber-dark/80 border border-cyber-purple/20 rounded-2xl p-6 backdrop-blur-sm">
         <div className="flex items-center gap-2 mb-5">
           <span className="text-lg">🛡️</span>
           <span className="text-gray-400 text-sm uppercase tracking-wider">Security Checklist</span>
@@ -153,6 +154,7 @@ export default function AnalysisResult({ analysis }) {
           ))}
         </div>
       </div>
+      )}
 
       {/* AI Deep Analysis */}
       {analysis.aiDetails && analysis.aiDetails.length > 0 && (
@@ -188,13 +190,15 @@ export default function AnalysisResult({ analysis }) {
       )}
 
       {/* AI Summary */}
-      <div className="bg-gradient-to-br from-purple-900/20 to-blue-900/20 border border-cyber-purple/30 rounded-2xl p-6 backdrop-blur-sm">
-        <div className="flex items-center gap-2 mb-4">
-          <span className="text-2xl">📋</span>
-          <span className="text-gray-300 text-sm uppercase tracking-wider font-semibold">AI Summary</span>
+      {analysis.summary && (
+        <div className="bg-gradient-to-br from-purple-900/20 to-blue-900/20 border border-cyber-purple/30 rounded-2xl p-6 backdrop-blur-sm">
+          <div className="flex items-center gap-2 mb-4">
+            <span className="text-2xl">📋</span>
+            <span className="text-gray-300 text-sm uppercase tracking-wider font-semibold">AI Summary</span>
+          </div>
+          <p className="text-gray-200 leading-relaxed text-lg">{analysis.summary}</p>
         </div>
-        <p className="text-gray-200 leading-relaxed text-lg">{analysis.summary}</p>
-      </div>
+      )}
 
       {/* Recommendations */}
       {analysis.aiRecommendations && analysis.aiRecommendations.length > 0 && (

@@ -91,7 +91,9 @@ export default async function handler(req, res) {
         for (let i = 0; i <= retries; i++) {
           try {
             const r = await q({ module: 'contract', action: 'getsourcecode', address })
-            if (r && r.result && r.result[0]?.SourceCode) {
+            if (r && r.status === '1') {
+              // API responded successfully — even if SourceCode is empty (unverified)
+              // we must return the result so analyzeContract can handle it properly
               dataSources.etherscan.ok = true
               return r
             }

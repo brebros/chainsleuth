@@ -11,8 +11,8 @@ export default function DataSourcesBar({ dataSources }) {
   if (!dataSources) return null
 
   const sources = Object.entries(dataSources)
-  const allOk = sources.every(([, s]) => s.ok || s.note)
-  const hasErrors = sources.some(([, s]) => s.error)
+  const allOk = sources.every(([, s]) => s && (s.ok || s.note))
+  const hasErrors = sources.some(([, s]) => s && s.error)
 
   if (allOk) {
     return (

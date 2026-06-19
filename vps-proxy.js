@@ -88,7 +88,8 @@ app.post('/api/ai-analyze', async (req, res) => {
         ],
         temperature: 0.3,
         max_tokens: 500
-      })
+      }),
+      signal: AbortSignal.timeout(25000)
     })
     if (!resp.ok) {
       const err = await resp.text()
@@ -126,8 +127,8 @@ function buildPrompt(d) {
   const f = (d.flags || []).map(function(x) { return '- ' + x.name + ': ' + x.status.toUpperCase() + ' - ' + x.details }).join('\n') || 'None'
   const h = (d.holderData && d.holderData.totalHolders) || 'Unknown'
   const c = (d.holderData && d.holderData.top10Concentration) || 'Unknown'
-  const age = d.contractInfo?.age || 'Unknown'
-  const txCount = d.contractInfo?.txCount || 'Unknown'
+  const age = d.contractInfo?.age ?? 'Unknown'
+  const txCount = d.contractInfo?.txCount ?? 'Unknown'
   const isProxy = d.contractInfo?.isProxy ? 'Yes' : 'No'
   const liquidity = d.liquidity?.hasLiquidity ? 'Yes' : 'No'
 
