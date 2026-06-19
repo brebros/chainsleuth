@@ -170,7 +170,7 @@ export default async function handler(req, res) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(analysis),
-        signal: AbortSignal.timeout(30000)
+        signal: AbortSignal.timeout(55000)
       })
       if (!aiResp.ok) throw new Error(`AI proxy HTTP ${aiResp.status}`)
       const aiResult = await aiResp.json()

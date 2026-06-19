@@ -76,7 +76,8 @@ app.post('/api/ai-analyze', async (req, res) => {
   try {
     const cd = req.body
     const prompt = buildPrompt(cd)
-    const url = zgBaseUrl.replace(/\/+$/, '') + '/v1/chat/completions'
+    const url = zgBaseUrl.replace(/\/+$/, '') + '/chat/completions'
+    console.log('AI request URL:', url, 'model:', zgModel, 'prompt length:', prompt.length)
     const resp = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + zgApiKey },
@@ -87,9 +88,9 @@ app.post('/api/ai-analyze', async (req, res) => {
           { role: 'user', content: prompt }
         ],
         temperature: 0.3,
-        max_tokens: 500
+        max_tokens: 300
       }),
-      signal: AbortSignal.timeout(25000)
+      signal: AbortSignal.timeout(60000)
     })
     if (!resp.ok) {
       const err = await resp.text()
