@@ -1,4 +1,5 @@
 import React from 'react'
+import GoPlusPanel from './GoPlusPanel'
 
 export default function AnalysisResult({ analysis }) {
   const getFlagIcon = (status) => {
@@ -34,8 +35,6 @@ export default function AnalysisResult({ analysis }) {
             </span>
           )}
         </div>
-
-        {/* Stats grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-4 bg-cyber-darker/50 rounded-xl">
           <div className="text-center">
             <div className="text-lg font-bold text-white font-mono truncate">
@@ -63,8 +62,6 @@ export default function AnalysisResult({ analysis }) {
             <div className="text-xs text-gray-400">Compiler</div>
           </div>
         </div>
-
-        {/* Extra info */}
         <div className="flex flex-wrap gap-2 mt-3">
           {analysis.contractInfo?.isProxy && (
             <span className="px-2 py-1 bg-yellow-500/20 text-yellow-400 text-xs rounded border border-yellow-500/30">
@@ -83,6 +80,9 @@ export default function AnalysisResult({ analysis }) {
           )}
         </div>
       </div>
+
+      {/* GoPlus Security */}
+      <GoPlusPanel goPlus={analysis.goPlus} />
 
       {/* Security Checklist */}
       <div className="bg-cyber-dark/80 border border-cyber-purple/20 rounded-2xl p-6 backdrop-blur-sm">

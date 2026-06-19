@@ -1,6 +1,7 @@
 // POST /api/analyze — Vercel serverless function
 import { etherscanQuery, analyzeContract, getContractInfo, checkLiquidity } from '../lib/etherscan.js'
 import { checkSocialSignals } from '../lib/social.js'
+import { getGoPlusSecurity, goPlusToFlags } from '../lib/goplus.js'
 
 const VPS_URL = process.env.VPS_0G_URL || 'http://77.90.51.232:3001'
 
@@ -18,19 +19,27 @@ export default async function handler(req, res) {
     }
 
     const apiKey = process.env.ETHERSCAN_API_KEY || ''
-    const delay = ms => new Promise(r => setTimeout(r, ms))
 
-    const [contractSource, holders, txCount, contractInfo, liquidity] = await Promise.all([
+    const [contractSource, holders, txCount, contractInfo, liquidity, goPlus] = await Promise.all([
       etherscanQuery({ module: 'contract', action: 'getsourcecode', address }, apiKey).catch(() => null),
       etherscanQuery({ module: 'token', action: 'tokenholderlist', contractaddress: address, page: 1, offset: 20 }, apiKey).catch(() => null),
       etherscanQuery({ module: 'stats', action: 'tokensupply', contractaddress: address }, apiKey).catch(() => null),
       getContractInfo(address, apiKey).catch(() => null),
-      checkLiquidity(address, apiKey).catch(() => null)
+      checkLiquidity(address, apiKey).catch(() => null),
+      getGoPlusSecurity(address).catch(() => null)
     ])
 
     const analysis = analyzeContract(contractSource, null, holders, txCount, address)
     if (contractInfo) analysis.contractInfo = { ...analysis.contractInfo, ...contractInfo }
     if (liquidity) analysis.liquidity = liquidity
+
+    // GoPlus security data
+    if (goPlus) {
+      const { flags: gpFlags, riskBoost } = goPlusToFlags(goPlus)
+      analysis.flags = [...analysis.flags, ...gpFlags]
+      analysis.riskScore = Math.min(100, analysis.riskScore + riskBoost)
+      analysis.goPlus = goPlus
+    }
 
     // Social signals
     const social = await checkSocialSignals(analysis.contractInfo?.name || '', address).catch(() => null)
@@ -51,7 +60,6 @@ export default async function handler(req, res) {
         analysis.aiDetails = aiResult.details || null
         analysis.aiRecommendations = aiResult.recommendations || null
         analysis.aiConfidence = aiResult.confidence || null
-        // AI score is PRIMARY — override rule-based
         if (aiResult.riskScore !== null && aiResult.riskScore !== undefined) {
           analysis.riskScore = aiResult.riskScore
         }
