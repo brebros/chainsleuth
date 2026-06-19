@@ -86,8 +86,28 @@ export default async function handler(req, res) {
       // Track individual source errors
       let contractSource = null, holders = null, txCount = null, contractInfoData = null, liquidityData = null, goPlusData = null
 
+      // Source code query with retry (critical for verification status)
+      const fetchSource = async (retries = 2) => {
+        for (let i = 0; i <= retries; i++) {
+          try {
+            const r = await q({ module: 'contract', action: 'getsourcecode', address })
+            if (r && r.result && r.result[0]?.SourceCode) {
+              dataSources.etherscan.ok = true
+              return r
+            }
+            // status=0 (rate limited) — retry after delay
+            if (i < retries) await new Promise(r => setTimeout(r, 500 * (i + 1)))
+          } catch (e) {
+            if (i < retries) await new Promise(r => setTimeout(r, 500 * (i + 1)))
+            else dataSources.etherscan.error = `Etherscan source: ${e.message}`
+          }
+        }
+        dataSources.etherscan.error = dataSources.etherscan.error || 'Etherscan source: no data returned'
+        return null
+      }
+
       const ethPromises = [
-        q({ module: 'contract', action: 'getsourcecode', address }).then(r => { dataSources.etherscan.ok = true; return r }).catch(e => { dataSources.etherscan.error = `Etherscan source: ${e.message}`; return null }),
+        fetchSource(),
         q({ module: 'token', action: 'tokenholderlist', contractaddress: address, page: 1, offset: 20 }).catch(e => { dataSources.etherscan.error = dataSources.etherscan.error || `Etherscan holders: ${e.message}`; return null }),
         q({ module: 'stats', action: 'tokensupply', contractaddress: address }).catch(e => { dataSources.etherscan.error = dataSources.etherscan.error || `Etherscan supply: ${e.message}`; return null }),
         getContractInfo(address, apiKey, chainId).catch(e => { dataSources.etherscan.error = dataSources.etherscan.error || `Etherscan info: ${e.message}`; return null }),
