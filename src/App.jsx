@@ -7,6 +7,7 @@ import Footer from './components/Footer'
 import History from './components/History'
 import LoadingAnimation from './components/LoadingAnimation'
 import CompareMode from './components/CompareMode'
+import Watchlist from './components/Watchlist'
 
 const API_BASE = window.location.origin
 
@@ -223,6 +224,9 @@ function App() {
 
         {/* Compare Mode */}
         {!loading && <CompareMode />}
+
+        {/* Watchlist */}
+        {!loading && <Watchlist />}
       </main>
 
       <Footer />
