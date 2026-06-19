@@ -111,19 +111,8 @@ export default async function handler(req, res) {
         analysis.aiDetails = aiResult.details || null
         analysis.aiRecommendations = aiResult.recommendations || null
         analysis.aiConfidence = aiResult.confidence || null
-        if (aiResult.riskScore !== null && aiResult.riskScore !== undefined) {
-          // Use the HIGHER of rule-based and AI scores — AI can't downgrade real risks
-          const ruleBasedScore = analysis.riskScore
-          const aiScore = aiResult.riskScore
-          analysis.riskScore = Math.max(ruleBasedScore, aiScore)
-          // But cap for verified safe tokens
-          const isVerified = analysis.contractInfo?.isVerified
-          const hasHoneypot = analysis.flags?.some(f => f.name === 'GoPlus: Honeypot' && f.status === 'danger')
-          const hasPonzi = analysis.flags?.some(f => f.name === 'Ponzi/Scam Pattern' && f.status === 'danger')
-          if (isVerified && !hasHoneypot && !hasPonzi) {
-            analysis.riskScore = Math.min(15, analysis.riskScore)
-          }
-        }
+        // AI provides summary & analysis but NOT risk score — rule-based is authoritative
+        // This ensures consistent scoring across scans
       }
     } catch (aiErr) {
       console.log('AI proxy failed:', aiErr.message)
