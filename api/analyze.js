@@ -43,7 +43,7 @@ export default async function handler(req, res) {
     }
 
     const chainId = getChainId(chainName)
-    const apiKey = process.env.ETHERSCAN_API_KEY || ''
+    const apiKey = process.env.ETHERSCAN_API_KEY || 'AX2RKA7JF4DEBFI3EB7EY5XKRXFIUIT5EG'
 
     // Check score cache first (5 min TTL)
     const cachedScore = getCachedScore(address, chainName)
