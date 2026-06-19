@@ -47,23 +47,25 @@ You MUST respond in this exact JSON format:
 }
 
 SCORING RULES (STRICT):
-- 0-20: Verified, no owner, no honeypot, clean code (UNI, COMP, DAI, LINK, WETH)
-- 21-40: Verified but has owner functions OR capped mint (USDT, LDO, MATIC)
-- 41-60: Owner functions + other warnings, OR unverified but clean code (USDC, SUSHI, 1INCH)
+- 0-20: Verified, no honeypot, clean code (UNI, COMP, DAI, LINK, WETH, AAVE)
+- 21-40: Verified but has minor flags OR verified with owner functions (USDT, LDO, MATIC)
+- 41-60: Unverified but clean code, OR verified with multiple warnings
 - 61-80: Unverified + suspicious patterns, OR honeypot patterns detected
 - 81-100: Unverified + honeypot + mint + high concentration = DEFINITE RUG
 
-KEY FACTORS:
-- Owner functions (onlyOwner, transferOwnership) = +15 points
-- Honeypot patterns (blacklist, canSell, antiBot, maxWallet, tradingEnabled) = +20 points  
-- Unverified source code = +20 points
-- Mint without cap = +15 points
-- Top 10 holders > 50% = +10 points
-- Verified + no owner + no honeypot = -10 points (bonus)
-- Proxy contract = +5 points
+CRITICAL RULES:
+- VERIFIED contracts with owner functions are NORMAL (USDT, LDO have them). Do NOT score high just because owner functions exist.
+- Blacklist on verified contracts = compliance feature (normal). Only flag on unverified.
+- OwnerChangeBalance on verified = normal treasury function. Only flag on unverified.
+- ONLY score HIGH if: unverified + honeypot patterns, OR confirmed honeypot from GoPlus, OR unverified + dangerous code (selfDestruct/delegatecall)
 
-Be STRICT. If owner has too much control, score HIGH. If honeypot patterns exist, score HIGH.
-If everything is clean and verified, score LOW.
+KEY FACTORS:
+- Unverified source code = +20 points
+- Honeypot patterns (blacklist, canSell, antiBot, maxWallet) = +20 points ONLY if unverified
+- Owner functions on UNVERIFIED = +15 points
+- Mint without cap on UNVERIFIED = +15 points
+- Top 10 holders > 50% = +10 points
+- Verified + no honeypot = -10 points (bonus)
 
 Provide detailed explanations for each finding.`
 
