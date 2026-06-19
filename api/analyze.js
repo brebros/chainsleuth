@@ -11,7 +11,7 @@ const ZG_URL = process.env.ZG_COMPUTE_URL || 'https://compute-network-18.integra
 const ZG_MODEL = process.env.ZG_COMPUTE_MODEL || 'qwen3.6-plus'
 
 function getZGKey() {
-  const raw = process.env.ZG_COMPUTE_KEY
+  const raw = process.env.ZG_COMPUTE_KEY_B64 || process.env.ZG_COMPUTE_KEY
   if (!raw) return null
   try {
     const decoded = Buffer.from(raw, 'base64').toString('utf8')
