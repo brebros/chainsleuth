@@ -89,6 +89,27 @@ body {
   color: white;
 }
 
+/* Light mode overrides */
+.light body { background: #f9fafb; }
+.light .bg-cyber-dark { background: #f3f4f6 !important; }
+.light .bg-cyber-darker { background: #e5e7eb !important; }
+.light .bg-gray-900\/50, .light .bg-gray-900\/80 { background: rgba(255,255,255,0.8) !important; }
+.light .bg-gray-800\/50, .light .bg-gray-800 { background: #f3f4f6 !important; }
+.light .bg-gray-950\/80 { background: rgba(255,255,255,0.8) !important; }
+.light .border-gray-800, .light .border-gray-700 { border-color: #e5e7eb !important; }
+.light .text-white { color: #111827 !important; }
+.light .text-gray-400 { color: #6b7280 !important; }
+.light .text-gray-300 { color: #374151 !important; }
+.light .text-gray-500 { color: #9ca3af !important; }
+.light .text-gray-200 { color: #1f2937 !important; }
+.light .text-cyber-purple { color: #7c3aed !important; }
+.light .hover\:text-white:hover { color: #111827 !important; }
+.light .bg-gray-800\/50:hover { background: #e5e7eb !important; }
+.light input { background: #f9fafb !important; color: #111827 !important; border-color: #d1d5db !important; }
+.light input::placeholder { color: #9ca3af !important; }
+.light .bg-gradient-to-br { background: linear-gradient(to bottom right, #ffffff, #f9fafb) !important; }
+.light .bg-gradient-to-r { background: linear-gradient(to right, #ffffff, #f9fafb) !important; }
+
 /* Focus states */
 input:focus {
   outline: none;
