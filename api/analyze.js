@@ -61,7 +61,14 @@ export default async function handler(req, res) {
         analysis.aiRecommendations = aiResult.recommendations || null
         analysis.aiConfidence = aiResult.confidence || null
         if (aiResult.riskScore !== null && aiResult.riskScore !== undefined) {
-          analysis.riskScore = aiResult.riskScore
+          // Cap AI override: verified contracts with no honeypot can't exceed 30
+          const isVerified = analysis.contractInfo?.isVerified
+          const hasHoneypot = analysis.flags?.some(f => f.name === 'GoPlus: Honeypot' && f.status === 'danger')
+          if (isVerified && !hasHoneypot) {
+            analysis.riskScore = Math.min(30, aiResult.riskScore)
+          } else {
+            analysis.riskScore = aiResult.riskScore
+          }
         }
       }
     } catch (aiErr) {
