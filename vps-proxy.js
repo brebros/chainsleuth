@@ -88,7 +88,7 @@ app.post('/api/ai-analyze', async (req, res) => {
           { role: 'user', content: prompt }
         ],
         temperature: 0.3,
-        max_tokens: 300
+        max_tokens: 1500
       }),
       signal: AbortSignal.timeout(60000)
     })

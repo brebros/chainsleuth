@@ -210,15 +210,31 @@ export default function AnalysisResult({ analysis }) {
       )}
 
       {/* AI Summary */}
-      {analysis.summary && (
+      {analysis.summary && (() => {
+        // If summary is raw JSON (truncated response), extract the real summary text
+        let displaySummary = analysis.summary
+        let parsedDetails = analysis.aiDetails
+        let parsedRecs = analysis.aiRecommendations
+        let parsedConfidence = analysis.aiConfidence
+        try {
+          if (typeof analysis.summary === 'string' && analysis.summary.trimStart().startsWith('{')) {
+            const inner = JSON.parse(analysis.summary)
+            if (inner.summary) displaySummary = inner.summary
+            if (inner.details && !parsedDetails) parsedDetails = inner.details
+            if (inner.recommendations && !parsedRecs) parsedRecs = inner.recommendations
+            if (inner.confidence && !parsedConfidence) parsedConfidence = inner.confidence
+          }
+        } catch {}
+        return (
         <div className="bg-gradient-to-br from-purple-900/20 to-blue-900/20 border border-cyber-purple/30 rounded-2xl p-6 backdrop-blur-sm">
           <div className="flex items-center gap-2 mb-4">
             <span className="text-2xl">📋</span>
             <span className="text-gray-300 text-sm uppercase tracking-wider font-semibold">AI Summary</span>
           </div>
-          <p className="text-gray-200 leading-relaxed text-lg">{analysis.summary}</p>
+          <p className="text-gray-200 leading-relaxed text-lg whitespace-pre-wrap">{displaySummary}</p>
         </div>
-      )}
+        )
+      })()}
 
       {/* Recommendations */}
       {analysis.aiRecommendations && analysis.aiRecommendations.length > 0 && (
