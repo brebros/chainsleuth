@@ -12,23 +12,34 @@ class ZGCompute {
 
   async initialize() {
     try {
-      // Load API key from file
+      // 1. Try loading from .0g-api-key.json file
       const keyPath = path.join(process.cwd(), '.0g-api-key.json')
-      if (!fs.existsSync(keyPath)) {
-        console.log('0G API key not found — using fallback')
-        return false
+      if (fs.existsSync(keyPath)) {
+        const keyData = JSON.parse(fs.readFileSync(keyPath, 'utf8'))
+        this.client = new OpenAI({
+          baseURL: keyData.serviceUrl,
+          apiKey: keyData.headers.Authorization.replace('Bearer ', '')
+        })
+        this.model = keyData.model || this.model
+        this.initialized = true
+        console.log('✅ 0G Compute initialized from file — model:', this.model)
+        return true
       }
 
-      const keyData = JSON.parse(fs.readFileSync(keyPath, 'utf8'))
-      
-      this.client = new OpenAI({
-        baseURL: keyData.serviceUrl,
-        apiKey: keyData.headers.Authorization.replace('Bearer ', '')
-      })
-      
-      this.initialized = true
-      console.log('✅ 0G Compute initialized — model:', this.model)
-      return true
+      // 2. Fallback: env vars (for Vercel deployment)
+      const envUrl = process.env.ZG_COMPUTE_URL
+      const envKey = process.env.ZG_COMPUTE_KEY_B64
+      if (envUrl && envKey) {
+        const apiKey = Buffer.from(envKey, 'base64').toString('utf8').replace(/^Bearer\s+/i, '').trim()
+        this.client = new OpenAI({ baseURL: envUrl, apiKey })
+        if (process.env.ZG_COMPUTE_MODEL) this.model = process.env.ZG_COMPUTE_MODEL
+        this.initialized = true
+        console.log('✅ 0G Compute initialized from env — model:', this.model)
+        return true
+      }
+
+      console.log('0G API key not found — using fallback')
+      return false
     } catch (error) {
       console.error('0G Compute init failed:', error.message)
       return false
