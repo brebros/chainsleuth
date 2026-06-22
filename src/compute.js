@@ -22,7 +22,7 @@ class ZGCompute {
       const keyData = JSON.parse(fs.readFileSync(keyPath, 'utf8'))
       
       this.client = new OpenAI({
-        baseURL: keyData.serviceUrl + '/v1',
+        baseURL: keyData.serviceUrl,
         apiKey: keyData.headers.Authorization.replace('Bearer ', '')
       })
       

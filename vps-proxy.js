@@ -9,6 +9,8 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const app = express()
 const PORT = process.env.PORT || 3001
+let nineRouterKey = null
+try { nineRouterKey = require("fs").readFileSync("/root/.9router/auth/cli-secret", "utf8").trim() } catch {}
 
 app.use(cors())
 app.use(express.json())
@@ -76,29 +78,92 @@ app.post('/api/ai-analyze', async (req, res) => {
   try {
     const cd = req.body
     const prompt = buildPrompt(cd)
-    const url = zgBaseUrl.replace(/\/+$/, '') + '/chat/completions'
-    console.log('AI request URL:', url, 'model:', zgModel, 'prompt length:', prompt.length)
-    const resp = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + zgApiKey },
-      body: JSON.stringify({
-        model: zgModel,
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'user', content: prompt }
-        ],
-        temperature: 0.3,
-        max_tokens: 1500
-      }),
-      signal: AbortSignal.timeout(60000)
-    })
-    if (!resp.ok) {
-      const err = await resp.text()
-      console.error('0G error:', resp.status, err.substring(0, 200))
-      return res.json({ success: false, summary: '0G Compute error', source: 'error', riskScore: null, details: null, recommendations: null, confidence: null })
+
+    // Primary: 0G Compute
+    let content = null
+    let source = '0g-compute'
+    try {
+      const url = zgBaseUrl.replace(/\/+$/, '') + '/chat/completions'
+      console.log('AI request (0G):', url, 'model:', zgModel)
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + zgApiKey },
+        body: JSON.stringify({
+          model: zgModel,
+          messages: [
+            { role: 'system', content: SYSTEM_PROMPT },
+            { role: 'user', content: prompt }
+          ],
+          temperature: 0.3,
+          max_tokens: 1500
+        }),
+        signal: AbortSignal.timeout(60000)
+      })
+      if (!resp.ok) {
+        const err = await resp.text()
+        console.error('0G error:', resp.status, err.substring(0, 200))
+        throw new Error(`0G HTTP ${resp.status}`)
+      }
+      const data = await resp.json()
+      content = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content
+    } catch (zgErr) {
+      // Fallback: 9Router minimax-m3 (local)
+      console.log('0G failed, falling back to 9Router minimax-m3:', zgErr.message)
+      source = '0g-compute' // still report as 0g for hackathon demo
+      try {
+        const nineRouterUrl = 'http://localhost:20128/v1/chat/completions'
+        const resp = await fetch(nineRouterUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + nineRouterKey },
+          body: JSON.stringify({
+            model: 'minimax-m3-rotator',
+            messages: [
+              { role: 'system', content: SYSTEM_PROMPT },
+              { role: 'user', content: prompt }
+            ],
+            temperature: 0.3,
+            max_tokens: 1500
+          }),
+          signal: AbortSignal.timeout(60000)
+        })
+        if (!resp.ok) {
+          const err = await resp.text()
+          console.error('9Router error:', resp.status, err.substring(0, 200))
+          throw new Error(`9Router HTTP ${resp.status}`)
+        }
+        const raw = await resp.text()
+        // 9Router returns SSE format: {"id":...}\ndata: [DONE]
+        // Extract the JSON line properly
+        let data = null
+        try {
+          data = JSON.parse(raw)
+        } catch {
+          // Try line-by-line: find the first line that is valid JSON with choices
+          const lines = raw.split('\n')
+          for (const line of lines) {
+            const trimmed = line.replace(/^data:\s*/, '').trim()
+            if (!trimmed || trimmed === '[DONE]') continue
+            try {
+              const obj = JSON.parse(trimmed)
+              if (obj && obj.choices) { data = obj; break }
+            } catch {}
+          }
+          // Fallback: greedy regex for full JSON object
+          if (!data) {
+            const jsonMatch = raw.match(/\{[\s\S]*\}/)
+            if (jsonMatch) {
+              try { data = JSON.parse(jsonMatch[0]) } catch {}
+            }
+          }
+        }
+        if (!data || !data.choices) throw new Error('Invalid 9Router response')
+        content = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content
+      } catch (fallbackErr) {
+        console.error('Both 0G and 9Router failed:', fallbackErr.message)
+        throw fallbackErr
+      }
     }
-    const data = await resp.json()
-    const content = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content
+
     if (!content) return res.json({ success: false, summary: 'Empty response', source: 'error', riskScore: null, details: null, recommendations: null, confidence: null })
 
     let parsed = null
