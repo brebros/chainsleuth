@@ -2,7 +2,7 @@
 
 **AI-powered smart contract risk analyzer. Paste a contract address — get instant risk assessment.**
 
-Built by [The Bross](https://github.com/brebros) for [Zero Cup 2026](https://0g.ai/arena/zero-cup).
+Built by [The Bross](https://github.com/brebros) 🇮🇩 Indonesia for [Zero Cup 2026](https://0g.ai/arena/zero-cup).
 
 🔗 **[chainsleuth.vercel.app](https://chainsleuth.vercel.app)**
 
